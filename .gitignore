@@ -1,0 +1,18 @@
+# Python cache files
+__pycache__/
+*.py[cod]
+
+# Environments
+venv/
+.venv/
+env/
+ENV/
+
+# Distribution artifacts
+build/
+dist/
+*.egg-info/
+
+# Others
+*.log
+*.sqlite3

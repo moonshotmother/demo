@@ -39,7 +39,7 @@ export default function ScatterPlot({
   const trace = {
     x: xVals,
     y: yVals,
-    mode: "markers",
+    mode: "markers" as const,
     text: data.map((d) => d.title),
     marker: {
       color: colorVals,
@@ -59,6 +59,8 @@ export default function ScatterPlot({
   };
 
   // Click handler from Plotly event
+  
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleClick = (ev: any) => {
     if (ev.points && ev.points.length > 0) {
       const idx = ev.points[0].pointIndex;

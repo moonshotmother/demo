@@ -78,6 +78,8 @@ export default function Home() {
     ];
     const matrix = rawData.map((d) =>
       numericCols.map((col) => {
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
         const val = (d as any)[col];
         return typeof val === "number" ? val : 0;
       }),

@@ -4,8 +4,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
-    "generate-data": "tsx generate_data.ts"
+    "start": "next start"
   },
   "dependencies": {
     "ml-kmeans": "^6.0.0",

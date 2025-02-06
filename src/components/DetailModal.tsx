@@ -32,15 +32,25 @@ export default function DetailModal({
         <div className="grid grid-cols-2 gap-4">
           <div>
             <p>Composite: {article.compositeScore?.toFixed(3)}</p>
-            <p>Tech Risk: {article.tech_risk?.toFixed(2)}</p>
-            <p>Adoption Risk: {article.adoption_risk?.toFixed(2)}</p>
-            <p>Market Size: {article.market_size?.toFixed(2)}</p>
-          </div>
-          <div>
-            <p>TRL: {article.trl}</p>
-            <p>IP Activity: {article.ip_activity}</p>
-            <p>Disruption Potential: {article.disruption_potential?.toFixed(2)}</p>
-            <p>Cluster: {article.cluster}</p>
+            <p>CAGR: {article.CAGR.toFixed(2)}</p>
+            <p>Years to 50% Penetration: {article.years_to_50pct_penetration.toFixed(2)}</p>
+            <p>TRL: {article.TRL.toFixed(2)}</p>
+            <p>Savings / Year: {article.usd_savings_per_year.toFixed(2)}</p>
+            <p>ROI %: {article.ROI_percent.toFixed(2)}</p>
+            <p>Novelty: {article.novelty_1_to_10.toFixed(2)}</p>
+            <p>Patents: {article.number_distinct_patents.toFixed(2)}</p>
+            <p>Commercial Chance %: {article.commercialisation_success_probability_percent.toFixed(2)}</p>
+            <p>Break Even Years: {article.break_even_time_years.toFixed(2)}</p>
+            <p>Adoption Risk: {article.adoption_risk_1_to_10.toFixed(2)}</p>
+            <p>Tech Risk: {article.technological_risk_1_to_10.toFixed(2)}</p>
+            <p>Competitiors: {article.competitors_count.toFixed(2)}</p>
+            <p>Disruption: {article.disruption_score_1_to_10.toFixed(2)}</p>
+            <p>Standalone Commerciality: {article.standalone_commericality_1_to_10.toFixed(2)}</p>
+            <p>Improvement Score: {article.improvement_compared_to_existing_1_to_10.toFixed(2)}</p>
+            <p>Market Impact: {article.enables_or_reshapes_market_1_to_10.toFixed(2)}</p>
+            <p>Global Market Size logged: {article.global_market_size_USD_log.toFixed(2)}</p>
+            <p>Annual Revenue logged: {article.annual_revenue_USD_log.toFixed(2)}</p>
+            <p>Investment Required logged: {article.rnd_investment_required_log.toFixed(2)}</p>
           </div>
         </div>
 

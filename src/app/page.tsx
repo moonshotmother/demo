@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+// If using ml-pca v5+ as ESM, you might do: import PCA from 'ml-pca';
 import { PCA } from "ml-pca";
-import { kmeans } from "ml-kmeans"; // or wherever your kmeans function is exported
+// If 'kmeans' is a named export from 'ml-kmeans'
+import { kmeans } from "ml-kmeans";
 import { squaredEuclidean } from "ml-distance-euclidean";
 
 import Sidebar from "../components/Sidebar";
@@ -18,10 +20,36 @@ export default function Home() {
   const [selectedArticle, setSelectedArticle] = useState<ArticleData | null>(null);
 
   // Sliders for weighting
-  const [techRiskWeight, setTechRiskWeight] = useState(0.3);
-  const [adoptionRiskWeight, setAdoptionRiskWeight] = useState(0.3);
-  const [marketSizeWeight, setMarketSizeWeight] = useState(0.2);
-  const [trlWeight, setTrlWeight] = useState(0.2);
+  const [cagrWeight, setCagrWeight] = useState(0.0);
+  const [yearsPenetrationWeight, setYearsPenetrationWeight] = useState(0.0);
+  const [adoptionRiskWeight, setAdoptionRiskWeight] = useState(0.0);
+  const [techRiskWeight, setTechRiskWeight] = useState(0.0);
+  const [disruptionWeight, setDisruptionWeight] = useState(0.0);
+  const [roiWeight, setRoiWeight] = useState(0.0);
+  const [TRLWeight, setTRLWeight] = useState(0.0);
+  const [timeToTRL7YearsWeight, setTimeToTRL7YearsWeight] = useState(0.0);
+  const [usdSavingsPerYearWeight, setUsdSavingsPerYearWeight] = useState(0.0);
+  const [noveltyWeight, setNoveltyWeight] = useState(0.0);
+  const [numPatentsWeight, setNumPatentsWeight] = useState(0.0);
+  const [comSuccessProbWeight, setComSuccessProbWeight] = useState(0.0);
+  const [breakEvenTimeWeight, setBreakEvenTimeWeight] = useState(0.0);
+  const [competitorsCountWeight, setCompetitorsCountWeight] = useState(0.0);
+  const [marketShareWeight, setMarketShareWeight] = useState(0.0);
+  const [standaloneCommWeight, setStandaloneCommWeight] = useState(0.0);
+  const [improvementWeight, setImprovementWeight] = useState(0.0);
+  const [enablesMarketWeight, setEnablesMarketWeight] = useState(0.0);
+  const [globalMarketLogWeight, setGlobalMarketLogWeight] = useState(0.0);
+  const [annualRevenueLogWeight, setAnnualRevenueLogWeight] = useState(0.0);
+  const [rndInvestmentLogWeight, setRndInvestmentLogWeight] = useState(0.0);
+
+
+  const [scoreThreshold, setScoreThreshold] = useState(50);
+
+  const filteredByThreshold = useMemo(() => {
+    // Return only items whose compositeScore >= threshold
+    return processedData.filter((d) => (d.compositeScore ?? 0) >= scoreThreshold);
+  }, [processedData, scoreThreshold]);
+
 
   // Which field to color by in the scatter plot
   const [colorBy, setColorBy] = useState<"cluster" | "composite_score">("cluster");
@@ -29,7 +57,7 @@ export default function Home() {
   // Pinned articles
   const [pinned, setPinned] = useState<string[]>([]);
 
-  // 1) Load data from /public/data.json once
+  // Load data from /public/data.json once
   useEffect(() => {
     fetch("/data.json")
       .then((res) => res.json())
@@ -39,95 +67,106 @@ export default function Home() {
       .catch((err) => console.error(err));
   }, []);
 
-  // 2) Helper to compute a single "composite" viability score per article
+  // Helper: compute a single "composite" viability score per article
   function computeComposite(d: ArticleData): number {
-    const maxMarket = 1e10;
-    const trlMax = 9.0;
-    return (
-      (1 - d.tech_risk) * techRiskWeight +
-      (1 - d.adoption_risk) * adoptionRiskWeight +
-      (d.market_size / maxMarket) * marketSizeWeight +
-      (d.trl / trlMax) * trlWeight
-    );
+    const score =
+      (d.CAGR * cagrWeight)
+      - (d.years_to_50pct_penetration * yearsPenetrationWeight)
+      - (d.adoption_risk_1_to_10 * adoptionRiskWeight)
+      - (d.technological_risk_1_to_10 * techRiskWeight)
+      + (d.disruption_score_1_to_10 * disruptionWeight)
+      + (d.ROI_percent * roiWeight)
+      + ((d.TRL || 0) * TRLWeight)
+      - ((d.time_to_TRL_7_years || 0) * timeToTRL7YearsWeight)
+      + ((d.usd_savings_per_year || 0) * usdSavingsPerYearWeight)
+      + ((d.novelty_1_to_10 || 0) * noveltyWeight)
+      + ((d.number_distinct_patents || 0) * numPatentsWeight)
+      + ((d.commercialisation_success_probability_percent || 0) * comSuccessProbWeight)
+      - ((d.break_even_time_years || 0) * breakEvenTimeWeight)
+      - ((d.competitors_count || 0) * competitorsCountWeight)
+      + ((d["5_year_market_share_percent"] || 0) * marketShareWeight)
+      + ((d.standalone_commericality_1_to_10 || 0) * standaloneCommWeight)
+      + ((d.improvement_compared_to_existing_1_to_10 || 0) * improvementWeight)
+      + ((d.enables_or_reshapes_market_1_to_10 || 0) * enablesMarketWeight)
+      + ((d.global_market_size_USD_log || 0) * globalMarketLogWeight)
+      + ((d.annual_revenue_USD_log || 0) * annualRevenueLogWeight)
+      - ((d.rnd_investment_required_log || 0) * rndInvestmentLogWeight);
+
+    return score;
   }
 
-  // 3) PCA + K-means on the client whenever rawData or slider weights change
+  // PCA + K-means on the client whenever data or slider weights change
   useEffect(() => {
     if (rawData.length === 0) return;
 
-    // A) Build numeric matrix from your rawData
+    // 1) Build numeric matrix from rawData
+    // Expand or change these columns to match your new data fields
     const numericCols = [
-      "tech_risk",
-      "adoption_risk",
-      "market_size",
-      "trl",
-      "ip_activity",
-      "time_to_market",
-      "disruption_potential",
-      "cost_savings",
-      "environment_impact",
-      "citation_count",
-      "feasibility_score",
-      "breakthrough_potential",
-      "innovation_novelty",
-      "societal_impact",
-      "industry_applicability",
-      "readiness_index",
-      "scalability",
-      "public_funding_level",
+      "CAGR",
+      "years_to_50pct_penetration",
+      "TRL",
+      "time_to_TRL_7_years",
+      "usd_savings_per_year",
+      "ROI_percent",
+      "novelty_1_to_10",
+      "number_distinct_patents",
+      "commercialisation_success_probability_percent",
+      "break_even_time_years",
+      "adoption_risk_1_to_10",
+      "technological_risk_1_to_10",
+      "competitors_count",
+      "5_year_market_share_percent",
+      "disruption_score_1_to_10",
+      "standalone_commericality_1_to_10",
+      "improvement_compared_to_existing_1_to_10",
+      "enables_or_reshapes_market_1_to_10",
+      "global_market_size_USD_log",
+      "annual_revenue_USD_log",
+      "rnd_investment_required_log",
     ];
-    const matrix = rawData.map((d) =>
-      numericCols.map((col) => {
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const val = (d as any)[col];
+    const matrix = rawData.map((article) =>
+      numericCols.map((col) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const val = (article as any)[col];
         return typeof val === "number" ? val : 0;
-      }),
+      })
     );
 
-    // B) PCA with explicit config
-    // - method: 'SVD' (or 'NIPALS', etc.)
-    // - center: true => subtract column means
-    // - scale: false => do not divide by std dev (you may enable if needed)
-    const pcaModel = new PCA(matrix, {
-      method: "SVD",
-      center: true,
-      scale: false,
-    });
-    // Project each row into the first 2 principal components
+    // 2) PCA
+    const pcaModel = new PCA(matrix, { method: "SVD", center: true, scale: false });
+    // Extract 2D coords
     const coords = pcaModel.predict(matrix, { nComponents: 2 });
 
-    // C) K-means with explicit options
+    // 3) K-means
     const k = 5;
-    const kRes = kmeans(matrix, k, {
+    const km = kmeans(matrix, k, {
       maxIterations: 100,
       tolerance: 1e-6,
-      initialization: "kmeans++", // or 'random', 'mostDistant', or custom array
-      distanceFunction: squaredEuclidean,
+      initialization: "kmeans++",
+      distanceFunction: squaredEuclidean
     });
-    // kRes.clusters => array of cluster IDs
-    // kRes.centroids => final centroids
 
-    // D) Build 'processed' dataset: attach PCA coords, cluster ID, composite score
-    const updated = rawData.map((article, i) => {
-      // coords is an ml-matrix => coords.get(row, col)
+    // 4) Build processed data
+    const updated = rawData.map((d, i) => {
       const pcaX = coords.get(i, 0);
       const pcaY = coords.get(i, 1);
-      const cluster = kRes.clusters[i];
-      const composite = computeComposite(article);
+      const cluster = km.clusters[i];
+      const composite = computeComposite(d);
+
       return {
-        ...article,
+        ...d,
         pcaX,
         pcaY,
         cluster,
-        compositeScore: composite,
+        compositeScore: composite
       };
     });
 
-    // E) Normalize the compositeScore to 0..1
-    const minC = Math.min(...updated.map((u) => u.compositeScore ?? 0));
-    const maxC = Math.max(...updated.map((u) => u.compositeScore ?? 1));
-    const finalData = updated.map((u) => {
+    // 5) Normalize compositeScore 0..1
+    const minC = Math.min(...updated.map(u => u.compositeScore ?? 0));
+    const maxC = Math.max(...updated.map(u => u.compositeScore ?? 1));
+    const finalData = updated.map(u => {
       const cScore = u.compositeScore ?? 0;
       const norm = (cScore - minC) / (maxC - minC + 1e-9);
       return { ...u, compositeScore: norm };
@@ -136,13 +175,44 @@ export default function Home() {
     setProcessedData(finalData);
     setSelectedCluster(null);
     setSelectedArticle(null);
-  }, [rawData, techRiskWeight, adoptionRiskWeight, marketSizeWeight, trlWeight]);
+  }, [
+    rawData,
+    cagrWeight,
+    yearsPenetrationWeight,
+    adoptionRiskWeight,
+    techRiskWeight,
+    disruptionWeight,
+    roiWeight,
+    TRLWeight,
+    timeToTRL7YearsWeight,
+    usdSavingsPerYearWeight,
+    noveltyWeight,
+    numPatentsWeight,
+    comSuccessProbWeight,
+    breakEvenTimeWeight,
+    competitorsCountWeight,
+    marketShareWeight,
+    standaloneCommWeight,
+    improvementWeight,
+    enablesMarketWeight,
+    globalMarketLogWeight,
+    annualRevenueLogWeight,
+    rndInvestmentLogWeight
+  ]);
 
-  // 4) Table subset: either show all processed data or just the selected cluster
+
+
   const tableData = useMemo(() => {
-    if (selectedCluster == null) return processedData;
-    return processedData.filter((d) => d.cluster === selectedCluster);
-  }, [processedData, selectedCluster]);
+    let subset = filteredByThreshold;
+    if (selectedCluster !== null) {
+      subset = subset.filter((d) => d.cluster === selectedCluster);
+    }
+    return subset;
+  }, [filteredByThreshold, selectedCluster]);
+
+
+
+  const scatterData = filteredByThreshold;
 
   // Handlers
   function handlePointClick(a: ArticleData) {
@@ -157,26 +227,62 @@ export default function Home() {
   function togglePin(a: ArticleData) {
     const t = a.title;
     if (pinned.includes(t)) {
-      setPinned(pinned.filter((x) => x !== t));
+      setPinned(pinned.filter(x => x !== t));
     } else {
       setPinned([...pinned, t]);
     }
   }
 
-  // 5) Render UI
   return (
     <div className="flex h-screen">
       {/* SIDEBAR */}
       <Sidebar
-        techRiskWeight={techRiskWeight}
-        setTechRiskWeight={setTechRiskWeight}
+        cagrWeight={cagrWeight}
+        setCagrWeight={setCagrWeight}
+        yearsPenetrationWeight={yearsPenetrationWeight}
+        setYearsPenetrationWeight={setYearsPenetrationWeight}
         adoptionRiskWeight={adoptionRiskWeight}
         setAdoptionRiskWeight={setAdoptionRiskWeight}
-        marketSizeWeight={marketSizeWeight}
-        setMarketSizeWeight={setMarketSizeWeight}
-        trlWeight={trlWeight}
-        setTrlWeight={setTrlWeight}
+        techRiskWeight={techRiskWeight}
+        setTechRiskWeight={setTechRiskWeight}
+        disruptionWeight={disruptionWeight}
+        setDisruptionWeight={setDisruptionWeight}
+        roiWeight={roiWeight}
+        setRoiWeight={setRoiWeight}
         pinnedCount={pinned.length}
+        TRLWeight={TRLWeight}
+        setTRLWeight={setTRLWeight}
+        timeToTRL7YearsWeight={timeToTRL7YearsWeight}
+        setTimeToTRL7YearsWeight={setTimeToTRL7YearsWeight}
+        usdSavingsPerYearWeight={usdSavingsPerYearWeight}
+        setUsdSavingsPerYearWeight={setUsdSavingsPerYearWeight}
+        noveltyWeight={noveltyWeight}
+        setNoveltyWeight={setNoveltyWeight}
+        numPatentsWeight={numPatentsWeight}
+        setNumPatentsWeight={setNumPatentsWeight}
+        comSuccessProbWeight={comSuccessProbWeight}
+        setComSuccessProbWeight={setComSuccessProbWeight}
+        breakEvenTimeWeight={breakEvenTimeWeight}
+        setBreakEvenTimeWeight={setBreakEvenTimeWeight}
+        competitorsCountWeight={competitorsCountWeight}
+        setCompetitorsCountWeight={setCompetitorsCountWeight}
+        marketShareWeight={marketShareWeight}
+        setMarketShareWeight={setMarketShareWeight}
+        standaloneCommWeight={standaloneCommWeight}
+        setStandaloneCommWeight={setStandaloneCommWeight}
+        improvementWeight={improvementWeight}
+        setImprovementWeight={setImprovementWeight}
+        enablesMarketWeight={enablesMarketWeight}
+        setEnablesMarketWeight={setEnablesMarketWeight}
+        globalMarketLogWeight={globalMarketLogWeight}
+        setGlobalMarketLogWeight={setGlobalMarketLogWeight}
+        annualRevenueLogWeight={annualRevenueLogWeight}
+        setAnnualRevenueLogWeight={setAnnualRevenueLogWeight}
+        rndInvestmentLogWeight={rndInvestmentLogWeight}
+        setRndInvestmentLogWeight={setRndInvestmentLogWeight}
+
+        scoreThreshold={scoreThreshold}
+        setScoreThreshold={setScoreThreshold}
       />
 
       {/* MAIN COLUMN */}
@@ -211,7 +317,7 @@ export default function Home() {
               value={selectedCluster ?? ""}
               onChange={(e) =>
                 setSelectedCluster(
-                  e.target.value === "" ? null : parseInt(e.target.value),
+                  e.target.value === "" ? null : parseInt(e.target.value)
                 )
               }
             >
@@ -227,14 +333,14 @@ export default function Home() {
 
         {/* SCATTER PLOT */}
         <div className="my-4">
-          {processedData.length > 0 ? (
+          {scatterData.length > 0 ? (
             <ScatterPlot
-              data={processedData}
+              data={scatterData}   // was processedData before
               colorBy={colorBy}
               onPointClick={handlePointClick}
             />
           ) : (
-            <p>Loading or processing data...</p>
+            <p>No articles above threshold.</p>
           )}
         </div>
 

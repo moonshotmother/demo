@@ -1,9 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-// If using ml-pca v5+ as ESM, you might do: import PCA from 'ml-pca';
 import { PCA } from "ml-pca";
-// If 'kmeans' is a named export from 'ml-kmeans'
 import { kmeans } from "ml-kmeans";
 import { squaredEuclidean } from "ml-distance-euclidean";
 
@@ -14,12 +12,9 @@ import DetailModal from "../components/DetailModal";
 import { ArticleData } from "../components/types";
 
 export default function Home() {
-  const [rawData, setRawData] = useState<ArticleData[]>([]);
-  const [processedData, setProcessedData] = useState<ArticleData[]>([]);
-  const [selectedCluster, setSelectedCluster] = useState<number | null>(null);
-  const [selectedArticle, setSelectedArticle] = useState<ArticleData | null>(null);
-
-  // Sliders for weighting
+  // ==========================
+  // 1) Persistent state
+  // ==========================
   const [cagrWeight, setCagrWeight] = useState(0.0);
   const [yearsPenetrationWeight, setYearsPenetrationWeight] = useState(0.0);
   const [adoptionRiskWeight, setAdoptionRiskWeight] = useState(0.0);
@@ -42,22 +37,119 @@ export default function Home() {
   const [annualRevenueLogWeight, setAnnualRevenueLogWeight] = useState(0.0);
   const [rndInvestmentLogWeight, setRndInvestmentLogWeight] = useState(0.0);
 
-
-  const [scoreThreshold, setScoreThreshold] = useState(50);
-
-  const filteredByThreshold = useMemo(() => {
-    // Return only items whose compositeScore >= threshold
-    return processedData.filter((d) => (d.compositeScore ?? 0) >= scoreThreshold);
-  }, [processedData, scoreThreshold]);
-
-
-  // Which field to color by in the scatter plot
-  const [colorBy, setColorBy] = useState<"cluster" | "composite_score">("cluster");
-
-  // Pinned articles
+  const [scoreThreshold, setScoreThreshold] = useState(0.7);
   const [pinned, setPinned] = useState<string[]>([]);
 
-  // Load data from /public/data.json once
+  // ==========================
+  // 2) Load from localStorage on first mount
+  // ==========================
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("myAppState");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+
+        // Restore each saved field, if it exists
+        setCagrWeight(parsed.cagrWeight ?? 0.0);
+        setYearsPenetrationWeight(parsed.yearsPenetrationWeight ?? 0.0);
+        setAdoptionRiskWeight(parsed.adoptionRiskWeight ?? 0.0);
+        setTechRiskWeight(parsed.techRiskWeight ?? 0.0);
+        setDisruptionWeight(parsed.disruptionWeight ?? 0.0);
+        setRoiWeight(parsed.roiWeight ?? 0.0);
+        setTRLWeight(parsed.TRLWeight ?? 0.0);
+        setTimeToTRL7YearsWeight(parsed.timeToTRL7YearsWeight ?? 0.0);
+        setUsdSavingsPerYearWeight(parsed.usdSavingsPerYearWeight ?? 0.0);
+        setNoveltyWeight(parsed.noveltyWeight ?? 0.0);
+        setNumPatentsWeight(parsed.numPatentsWeight ?? 0.0);
+        setComSuccessProbWeight(parsed.comSuccessProbWeight ?? 0.0);
+        setBreakEvenTimeWeight(parsed.breakEvenTimeWeight ?? 0.0);
+        setCompetitorsCountWeight(parsed.competitorsCountWeight ?? 0.0);
+        setMarketShareWeight(parsed.marketShareWeight ?? 0.0);
+        setStandaloneCommWeight(parsed.standaloneCommWeight ?? 0.0);
+        setImprovementWeight(parsed.improvementWeight ?? 0.0);
+        setEnablesMarketWeight(parsed.enablesMarketWeight ?? 0.0);
+        setGlobalMarketLogWeight(parsed.globalMarketLogWeight ?? 0.0);
+        setAnnualRevenueLogWeight(parsed.annualRevenueLogWeight ?? 0.0);
+        setRndInvestmentLogWeight(parsed.rndInvestmentLogWeight ?? 0.0);
+
+        setScoreThreshold(parsed.scoreThreshold ?? 50);
+        setPinned(parsed.pinned ?? []);
+      }
+    }
+  }, []);
+
+  // ==========================
+  // 3) Whenever these states change, save them to localStorage
+  // ==========================
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const toSave = {
+        cagrWeight,
+        yearsPenetrationWeight,
+        adoptionRiskWeight,
+        techRiskWeight,
+        disruptionWeight,
+        roiWeight,
+        TRLWeight,
+        timeToTRL7YearsWeight,
+        usdSavingsPerYearWeight,
+        noveltyWeight,
+        numPatentsWeight,
+        comSuccessProbWeight,
+        breakEvenTimeWeight,
+        competitorsCountWeight,
+        marketShareWeight,
+        standaloneCommWeight,
+        improvementWeight,
+        enablesMarketWeight,
+        globalMarketLogWeight,
+        annualRevenueLogWeight,
+        rndInvestmentLogWeight,
+        scoreThreshold,
+        pinned
+      };
+      localStorage.setItem("myAppState", JSON.stringify(toSave));
+    }
+  }, [
+    cagrWeight,
+    yearsPenetrationWeight,
+    adoptionRiskWeight,
+    techRiskWeight,
+    disruptionWeight,
+    roiWeight,
+    TRLWeight,
+    timeToTRL7YearsWeight,
+    usdSavingsPerYearWeight,
+    noveltyWeight,
+    numPatentsWeight,
+    comSuccessProbWeight,
+    breakEvenTimeWeight,
+    competitorsCountWeight,
+    marketShareWeight,
+    standaloneCommWeight,
+    improvementWeight,
+    enablesMarketWeight,
+    globalMarketLogWeight,
+    annualRevenueLogWeight,
+    rndInvestmentLogWeight,
+    scoreThreshold,
+    pinned
+  ]);
+
+
+  
+  // ==========================
+  // 4) Other states that don't need persistence
+  // ==========================
+  const [rawData, setRawData] = useState<ArticleData[]>([]);
+  const [processedData, setProcessedData] = useState<ArticleData[]>([]);
+  const [selectedCluster, setSelectedCluster] = useState<number | null>(null);
+  const [selectedArticle, setSelectedArticle] = useState<ArticleData | null>(null);
+  const [colorBy, setColorBy] = useState<"cluster" | "composite_score">("cluster");
+
+  // ==========================
+  // 5) Load data from /public/data.json
+  // ==========================
   useEffect(() => {
     fetch("/data.json")
       .then((res) => res.json())
@@ -67,7 +159,9 @@ export default function Home() {
       .catch((err) => console.error(err));
   }, []);
 
-  // Helper: compute a single "composite" viability score per article
+  // ==========================
+  // 6) Compute the composite score for each article
+  // ==========================
   function computeComposite(d: ArticleData): number {
     const score =
       (d.CAGR * cagrWeight)
@@ -95,12 +189,13 @@ export default function Home() {
     return score;
   }
 
-  // PCA + K-means on the client whenever data or slider weights change
+  // ==========================
+  // 7) PCA + K-means when data or slider weights change
+  // ==========================
   useEffect(() => {
     if (rawData.length === 0) return;
 
-    // 1) Build numeric matrix from rawData
-    // Expand or change these columns to match your new data fields
+    // Numeric columns
     const numericCols = [
       "CAGR",
       "years_to_50pct_penetration",
@@ -127,27 +222,25 @@ export default function Home() {
 
     const matrix = rawData.map((article) =>
       numericCols.map((col) => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const val = (article as any)[col];
         return typeof val === "number" ? val : 0;
       })
     );
 
-    // 2) PCA
+    // PCA
     const pcaModel = new PCA(matrix, { method: "SVD", center: true, scale: false });
-    // Extract 2D coords
     const coords = pcaModel.predict(matrix, { nComponents: 2 });
 
-    // 3) K-means
+    // K-means
     const k = 5;
     const km = kmeans(matrix, k, {
       maxIterations: 100,
       tolerance: 1e-6,
       initialization: "kmeans++",
-      distanceFunction: squaredEuclidean
+      distanceFunction: squaredEuclidean,
     });
 
-    // 4) Build processed data
+    // Build processed data
     const updated = rawData.map((d, i) => {
       const pcaX = coords.get(i, 0);
       const pcaY = coords.get(i, 1);
@@ -159,14 +252,14 @@ export default function Home() {
         pcaX,
         pcaY,
         cluster,
-        compositeScore: composite
+        compositeScore: composite,
       };
     });
 
-    // 5) Normalize compositeScore 0..1
-    const minC = Math.min(...updated.map(u => u.compositeScore ?? 0));
-    const maxC = Math.max(...updated.map(u => u.compositeScore ?? 1));
-    const finalData = updated.map(u => {
+    // Normalize compositeScore 0..1
+    const minC = Math.min(...updated.map((u) => u.compositeScore ?? 0));
+    const maxC = Math.max(...updated.map((u) => u.compositeScore ?? 1));
+    const finalData = updated.map((u) => {
       const cScore = u.compositeScore ?? 0;
       const norm = (cScore - minC) / (maxC - minC + 1e-9);
       return { ...u, compositeScore: norm };
@@ -197,10 +290,16 @@ export default function Home() {
     enablesMarketWeight,
     globalMarketLogWeight,
     annualRevenueLogWeight,
-    rndInvestmentLogWeight
+    rndInvestmentLogWeight,
   ]);
 
-
+  // ==========================
+  // 8) Filtering and data for display
+  // ==========================
+  const filteredByThreshold = useMemo(() => {
+    // Return only items whose compositeScore >= threshold
+    return processedData.filter((d) => (d.compositeScore ?? 0) >= scoreThreshold);
+  }, [processedData, scoreThreshold]);
 
   const tableData = useMemo(() => {
     let subset = filteredByThreshold;
@@ -210,11 +309,11 @@ export default function Home() {
     return subset;
   }, [filteredByThreshold, selectedCluster]);
 
-
-
   const scatterData = filteredByThreshold;
 
-  // Handlers
+  // ==========================
+  // 9) Handlers
+  // ==========================
   function handlePointClick(a: ArticleData) {
     setSelectedArticle(a);
   }
@@ -227,12 +326,15 @@ export default function Home() {
   function togglePin(a: ArticleData) {
     const t = a.title;
     if (pinned.includes(t)) {
-      setPinned(pinned.filter(x => x !== t));
+      setPinned(pinned.filter((x) => x !== t));
     } else {
       setPinned([...pinned, t]);
     }
   }
 
+  // ==========================
+  // 10) Render
+  // ==========================
   return (
     <div className="flex h-screen">
       {/* SIDEBAR */}
@@ -280,7 +382,6 @@ export default function Home() {
         setAnnualRevenueLogWeight={setAnnualRevenueLogWeight}
         rndInvestmentLogWeight={rndInvestmentLogWeight}
         setRndInvestmentLogWeight={setRndInvestmentLogWeight}
-
         scoreThreshold={scoreThreshold}
         setScoreThreshold={setScoreThreshold}
       />
@@ -335,7 +436,7 @@ export default function Home() {
         <div className="my-4">
           {scatterData.length > 0 ? (
             <ScatterPlot
-              data={scatterData}   // was processedData before
+              data={scatterData}
               colorBy={colorBy}
               onPointClick={handlePointClick}
             />

@@ -12,6 +12,10 @@ export default function ArticleTable({
   articles,
   onRowClick
 }: ArticleTableProps) {
+  const sortedArticles = React.useMemo(() => {
+    return [...articles].sort((a, b) => (b.compositeScore ?? 0) - (a.compositeScore ?? 0));
+  }, [articles]);
+
   return (
     <div className="overflow-auto bg-white shadow mt-4">
       <table className="min-w-full text-left">
@@ -22,6 +26,7 @@ export default function ArticleTable({
             <th className="px-4 py-2">CAGR</th>
             <th className="px-4 py-2">Years to 50% Penetration</th>
             <th className="px-4 py-2">TRL</th>
+            <th className="px-4 py-2">Time TRL 7</th>
             <th className="px-4 py-2">Savings / Year</th>
             <th className="px-4 py-2">ROI %</th>
             <th className="px-4 py-2">Novelty</th>
@@ -31,6 +36,7 @@ export default function ArticleTable({
             <th className="px-4 py-2">Adoption Risk</th>
             <th className="px-4 py-2">Tech Risk</th>
             <th className="px-4 py-2">Competitiors</th>
+            <th className="px-4 py-2">5 Year Marketshare</th>
             <th className="px-4 py-2">Disruption</th>
             <th className="px-4 py-2">Standalone Commerciality</th>
             <th className="px-4 py-2">Improvement Score</th>
@@ -42,7 +48,7 @@ export default function ArticleTable({
           </tr>
         </thead>
         <tbody>
-          {articles.map((a, i) => (
+          {sortedArticles.map((a, i) => (
             <tr
               key={i}
               className="hover:bg-gray-100 cursor-pointer"

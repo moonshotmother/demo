@@ -15,7 +15,7 @@ export interface ArticleData {
     adoption_risk_1_to_10: number;
     technological_risk_1_to_10: number;
     competitors_count: number;
-    year_market_share_percent: number;
+    five_year_market_share_percent: number;
     disruption_score_1_to_10: number;
     standalone_commericality_1_to_10: number;
     improvement_compared_to_existing_1_to_10: number;

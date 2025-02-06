@@ -75,7 +75,7 @@ export default function ArticleTable({
               <td className="px-4 py-2">{a.adoption_risk_1_to_10.toFixed(2)}</td>
               <td className="px-4 py-2">{a.technological_risk_1_to_10.toFixed(2)}</td>
               <td className="px-4 py-2">{a.competitors_count.toFixed(2)}</td>
-              <td className="px-4 py-2">{a["5_year_market_share_percent"].toFixed(2)}</td>
+              <td className="px-4 py-2">{a.five_year_market_share_percent.toFixed(2)}</td>
               <td className="px-4 py-2">{a.disruption_score_1_to_10.toFixed(2)}</td>
               <td className="px-4 py-2">{a.standalone_commericality_1_to_10.toFixed(2)}</td>
               <td className="px-4 py-2">{a.improvement_compared_to_existing_1_to_10.toFixed(2)}</td>

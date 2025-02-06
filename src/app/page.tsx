@@ -178,7 +178,7 @@ export default function Home() {
       + ((d.commercialisation_success_probability_percent || 0) * comSuccessProbWeight)
       - ((d.break_even_time_years || 0) * breakEvenTimeWeight)
       - ((d.competitors_count || 0) * competitorsCountWeight)
-      + ((d["5_year_market_share_percent"] || 0) * marketShareWeight)
+      + ((d.five_year_market_share_percent || 0) * marketShareWeight)
       + ((d.standalone_commericality_1_to_10 || 0) * standaloneCommWeight)
       + ((d.improvement_compared_to_existing_1_to_10 || 0) * improvementWeight)
       + ((d.enables_or_reshapes_market_1_to_10 || 0) * enablesMarketWeight)
@@ -210,7 +210,7 @@ export default function Home() {
       "adoption_risk_1_to_10",
       "technological_risk_1_to_10",
       "competitors_count",
-      "5_year_market_share_percent",
+      "five_year_market_share_percent",
       "disruption_score_1_to_10",
       "standalone_commericality_1_to_10",
       "improvement_compared_to_existing_1_to_10",
@@ -222,7 +222,8 @@ export default function Home() {
 
     const matrix = rawData.map((article) =>
       numericCols.map((col) => {
-        const val = (article as any)[col];
+        
+        const val = article[col as keyof ArticleData];
         return typeof val === "number" ? val : 0;
       })
     );

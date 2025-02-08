@@ -24,6 +24,8 @@ export interface ArticleData {
     annual_revenue_USD_log: number;
     rnd_investment_required_log: number;
 
+    categories: string[] | "nan";
+
   
     // Computed fields:
     compositeScore?: number;

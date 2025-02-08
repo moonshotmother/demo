@@ -10,6 +10,7 @@ import ScatterPlot from "../components/ScatterPlot";
 import ArticleTable from "../components/ArticleTable";
 import DetailModal from "../components/DetailModal";
 import { ArticleData } from "../components/types";
+import { isNullOrUndefined } from "util";
 
 export default function Home() {
   // ==========================
@@ -39,6 +40,9 @@ export default function Home() {
 
   const [scoreThreshold, setScoreThreshold] = useState(0.7);
   const [pinned, setPinned] = useState<string[]>([]);
+
+  // NEW: an array of excluded categories
+  const [excludedCategories, setExcludedCategories] = useState<string[]>([]);
 
   // ==========================
   // 2) Load from localStorage on first mount
@@ -72,8 +76,11 @@ export default function Home() {
         setAnnualRevenueLogWeight(parsed.annualRevenueLogWeight ?? 0.0);
         setRndInvestmentLogWeight(parsed.rndInvestmentLogWeight ?? 0.0);
 
-        setScoreThreshold(parsed.scoreThreshold ?? 50);
+        setScoreThreshold(parsed.scoreThreshold ?? 0.7);
         setPinned(parsed.pinned ?? []);
+
+        // Also restore excludedCategories
+        setExcludedCategories(parsed.excludedCategories ?? []);
       }
     }
   }, []);
@@ -106,7 +113,8 @@ export default function Home() {
         annualRevenueLogWeight,
         rndInvestmentLogWeight,
         scoreThreshold,
-        pinned
+        pinned,
+        excludedCategories, // new
       };
       localStorage.setItem("myAppState", JSON.stringify(toSave));
     }
@@ -133,11 +141,10 @@ export default function Home() {
     annualRevenueLogWeight,
     rndInvestmentLogWeight,
     scoreThreshold,
-    pinned
+    pinned,
+    excludedCategories,
   ]);
 
-
-  
   // ==========================
   // 4) Other states that don't need persistence
   // ==========================
@@ -164,33 +171,33 @@ export default function Home() {
   // ==========================
   function computeComposite(d: ArticleData): number {
     const score =
-      (d.CAGR * cagrWeight)
-      - (d.years_to_50pct_penetration * yearsPenetrationWeight)
-      - (d.adoption_risk_1_to_10 * adoptionRiskWeight)
-      - (d.technological_risk_1_to_10 * techRiskWeight)
-      + (d.disruption_score_1_to_10 * disruptionWeight)
-      + (d.ROI_percent * roiWeight)
-      + ((d.TRL || 0) * TRLWeight)
-      - ((d.time_to_TRL_7_years || 0) * timeToTRL7YearsWeight)
-      + ((d.usd_savings_per_year || 0) * usdSavingsPerYearWeight)
-      + ((d.novelty_1_to_10 || 0) * noveltyWeight)
-      + ((d.number_distinct_patents || 0) * numPatentsWeight)
-      + ((d.commercialisation_success_probability_percent || 0) * comSuccessProbWeight)
-      - ((d.break_even_time_years || 0) * breakEvenTimeWeight)
-      - ((d.competitors_count || 0) * competitorsCountWeight)
-      + ((d.five_year_market_share_percent || 0) * marketShareWeight)
-      + ((d.standalone_commericality_1_to_10 || 0) * standaloneCommWeight)
-      + ((d.improvement_compared_to_existing_1_to_10 || 0) * improvementWeight)
-      + ((d.enables_or_reshapes_market_1_to_10 || 0) * enablesMarketWeight)
-      + ((d.global_market_size_USD_log || 0) * globalMarketLogWeight)
-      + ((d.annual_revenue_USD_log || 0) * annualRevenueLogWeight)
-      - ((d.rnd_investment_required_log || 0) * rndInvestmentLogWeight);
+      (d.CAGR * cagrWeight) -
+      (d.years_to_50pct_penetration * yearsPenetrationWeight) -
+      (d.adoption_risk_1_to_10 * adoptionRiskWeight) -
+      (d.technological_risk_1_to_10 * techRiskWeight) +
+      (d.disruption_score_1_to_10 * disruptionWeight) +
+      (d.ROI_percent * roiWeight) +
+      ((d.TRL || 0) * TRLWeight) -
+      ((d.time_to_TRL_7_years || 0) * timeToTRL7YearsWeight) +
+      ((d.usd_savings_per_year || 0) * usdSavingsPerYearWeight) +
+      ((d.novelty_1_to_10 || 0) * noveltyWeight) +
+      ((d.number_distinct_patents || 0) * numPatentsWeight) +
+      ((d.commercialisation_success_probability_percent || 0) * comSuccessProbWeight) -
+      ((d.break_even_time_years || 0) * breakEvenTimeWeight) -
+      ((d.competitors_count || 0) * competitorsCountWeight) +
+      ((d.five_year_market_share_percent || 0) * marketShareWeight) +
+      ((d.standalone_commericality_1_to_10 || 0) * standaloneCommWeight) +
+      ((d.improvement_compared_to_existing_1_to_10 || 0) * improvementWeight) +
+      ((d.enables_or_reshapes_market_1_to_10 || 0) * enablesMarketWeight) +
+      ((d.global_market_size_USD_log || 0) * globalMarketLogWeight) +
+      ((d.annual_revenue_USD_log || 0) * annualRevenueLogWeight) -
+      ((d.rnd_investment_required_log || 0) * rndInvestmentLogWeight);
 
     return score;
   }
 
   // ==========================
-  // 7) PCA + K-means when data or slider weights change
+  // 7) PCA + K-means on load or slider changes
   // ==========================
   useEffect(() => {
     if (rawData.length === 0) return;
@@ -220,9 +227,9 @@ export default function Home() {
       "rnd_investment_required_log",
     ];
 
+    // Build matrix
     const matrix = rawData.map((article) =>
       numericCols.map((col) => {
-        
         const val = article[col as keyof ArticleData];
         return typeof val === "number" ? val : 0;
       })
@@ -295,25 +302,61 @@ export default function Home() {
   ]);
 
   // ==========================
-  // 8) Filtering and data for display
+  // 8) Filter pipeline: first threshold + cluster -> subsetBeforeExclude
   // ==========================
-  const filteredByThreshold = useMemo(() => {
-    // Return only items whose compositeScore >= threshold
-    return processedData.filter((d) => (d.compositeScore ?? 0) >= scoreThreshold);
-  }, [processedData, scoreThreshold]);
+  const subsetBeforeExclude = useMemo(() => {
+    let subset = processedData;
+    // Step 1: threshold
+    subset = subset.filter((d) => (d.compositeScore ?? 0) >= scoreThreshold);
 
-  const tableData = useMemo(() => {
-    let subset = filteredByThreshold;
+    // Step 2: cluster selection
     if (selectedCluster !== null) {
       subset = subset.filter((d) => d.cluster === selectedCluster);
     }
     return subset;
-  }, [filteredByThreshold, selectedCluster]);
-
-  const scatterData = filteredByThreshold;
+  }, [processedData, scoreThreshold, selectedCluster]);
 
   // ==========================
-  // 9) Handlers
+  // 9) Figure out the top 5 categories in that subset
+  // ==========================
+  const topCategories = useMemo(() => {
+    // Count frequency of each category
+    const freqMap: Record<string, number> = {};
+    subsetBeforeExclude.forEach((art) => {
+      if (art.categories == "nan") return;
+
+      art.categories.forEach((cat) => {
+        freqMap[cat] = (freqMap[cat] || 0) + 1;
+      });
+    });
+
+    // Convert to array & sort descending
+    const sorted = Object.entries(freqMap).sort((a, b) => b[1] - a[1]);
+
+    // Take the top 10
+    return sorted.slice(0, 10); // array of [category, count]
+  }, [subsetBeforeExclude]);
+
+  // ==========================
+  // 10) Exclude categories -> finalFiltered
+  // ==========================
+  const finalFiltered = useMemo(() => {
+    // From subsetBeforeExclude, exclude any article that has an excluded category
+    if (excludedCategories.length === 0) return subsetBeforeExclude;
+
+    return subsetBeforeExclude.filter((art) => {
+      // If art.categories intersects with excludedCategories, exclude it
+      if (art.categories == "nan") return true;
+      return !art.categories.some((cat) => excludedCategories.includes(cat));
+    });
+  }, [subsetBeforeExclude, excludedCategories]);
+
+  // We'll use finalFiltered for the scatter plot and table
+  const scatterData = finalFiltered;
+  const tableData = finalFiltered;
+
+  // ==========================
+  // 11) Handlers
   // ==========================
   function handlePointClick(a: ArticleData) {
     setSelectedArticle(a);
@@ -333,8 +376,20 @@ export default function Home() {
     }
   }
 
+  // Helper to exclude a category
+  function excludeCategory(cat: string) {
+    setExcludedCategories((prev) =>
+      prev.includes(cat) ? prev : [...prev, cat]
+    );
+  }
+
+  // Helper to remove from excluded
+  function undoExcludeCategory(cat: string) {
+    setExcludedCategories((prev) => prev.filter((c) => c !== cat));
+  }
+
   // ==========================
-  // 10) Render
+  // 12) Render
   // ==========================
   return (
     <div className="flex h-screen">
@@ -433,7 +488,11 @@ export default function Home() {
           </label>
         </div>
 
-        {/* SCATTER PLOT */}
+
+
+
+
+        {/* SCATTER */}
         <div className="my-4">
           {scatterData.length > 0 ? (
             <ScatterPlot
@@ -442,13 +501,59 @@ export default function Home() {
               onPointClick={handlePointClick}
             />
           ) : (
-            <p>No articles above threshold.</p>
+            <p>No articles above threshold (after exclusion).</p>
           )}
         </div>
 
+        {/* Show top 5 categories from the subsetBeforeExclude */}
+        <div className="bg-white p-4 my-4 shadow">
+          <h2 className="text-lg font-bold mb-2">Top 10 Categories (before exclusion)</h2>
+          {topCategories.length === 0 ? (
+            <p className="text-sm text-gray-600">No categories found.</p>
+          ) : (
+            <ul className="list-disc list-inside">
+              {topCategories.map(([cat, count]) => (
+                <li key={cat}>
+                  {cat} ({count}){" "}
+                  <button
+                    onClick={() => excludeCategory(cat)}
+                    className="text-blue-600 hover:underline ml-2"
+                  >
+                    Exclude
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        {/* Show currently excluded categories (with a way to re-include) */}
+        {excludedCategories.length > 0 && (
+          <div className="bg-white p-4 my-4 shadow">
+            <h2 className="text-lg font-bold mb-2">Excluded Categories</h2>
+            <ul className="list-disc list-inside">
+              {excludedCategories.map((cat) => (
+                <li key={cat}>
+                  {cat}
+                  <button
+                    onClick={() => undoExcludeCategory(cat)}
+                    className="text-blue-600 hover:underline ml-2"
+                  >
+                    Undo
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+
+<div>
         {/* TABLE */}
         <ArticleTable articles={tableData} onRowClick={handleRowClick} />
 
+      </div>
+      
         {/* PINNED LIST */}
         <div className="mt-4 bg-white p-4 shadow">
           <h2 className="text-lg font-bold mb-2">Pinned Articles</h2>
@@ -464,10 +569,13 @@ export default function Home() {
         </div>
       </div>
 
+
+
+
       {/* DETAIL MODAL */}
       <DetailModal
         article={selectedArticle}
-        onClose={closeModal}
+        onClose={() => closeModal()}
         pinned={selectedArticle ? pinned.includes(selectedArticle.title) : false}
         onPin={togglePin}
       />

@@ -29,6 +29,7 @@ export default function DetailModal({
         </button>
         <h2 className="text-xl font-bold mb-2">{article.title}</h2>
         <p className="text-sm text-gray-600 mb-4">{article.abstract}</p>
+        <p className="text-sm text-gray-600 mb-4">{article.categories}</p>
         <div className="grid grid-cols-2 gap-4">
           <div>
             <p>Composite: {article.compositeScore?.toFixed(3)}</p>

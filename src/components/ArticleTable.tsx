@@ -17,7 +17,7 @@ export default function ArticleTable({
   }, [articles]);
 
   return (
-    <div className="overflow-auto bg-white shadow mt-4">
+    <div className="overflow-x-auto bg-white shadow mt-4">
       <table className="min-w-full text-left">
         <thead className="bg-gray-200">
           <tr>
@@ -36,7 +36,7 @@ export default function ArticleTable({
             <th className="px-4 py-2">Adoption Risk</th>
             <th className="px-4 py-2">Tech Risk</th>
             <th className="px-4 py-2">Competitiors</th>
-            <th className="px-4 py-2">5 Year Marketshare</th>
+            <th className="px-4 py-2">5 Year Mark etshare</th>
             <th className="px-4 py-2">Disruption</th>
             <th className="px-4 py-2">Standalone Commerciality</th>
             <th className="px-4 py-2">Improvement Score</th>
@@ -44,6 +44,7 @@ export default function ArticleTable({
             <th className="px-4 py-2">Global Market Size logged</th>
             <th className="px-4 py-2">Annual Revenue logged</th>
             <th className="px-4 py-2">Investment Required logged</th>
+            <th className="px-4 py-2">Categories</th>
             <th className="px-4 py-2">Cluster</th>
           </tr>
         </thead>
@@ -83,6 +84,7 @@ export default function ArticleTable({
               <td className="px-4 py-2">{a.global_market_size_USD_log.toFixed(2)}</td>
               <td className="px-4 py-2">{a.annual_revenue_USD_log.toFixed(2)}</td>
               <td className="px-4 py-2">{a.rnd_investment_required_log.toFixed(2)}</td>
+              <td className="px-4 py-2">{a.categories}</td>
               <td className="px-4 py-2">{a.cluster !== undefined ? a.cluster : "--"}</td>
             </tr>
           ))}

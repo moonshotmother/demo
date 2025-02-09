@@ -18,6 +18,11 @@ export default function CategoryBarChart({ data, onBarClick }: CategoryBarChartP
 
   data.forEach((article) => {
     // each article has categories: string[]
+
+    if (article.categories == "nan") {
+      return;
+    }
+
     article.categories?.forEach((cat) => {
       freqMap[cat] = (freqMap[cat] || 0) + 1;
     });

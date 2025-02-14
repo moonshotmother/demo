@@ -10,7 +10,6 @@ import ScatterPlot from "../components/ScatterPlot";
 import ArticleTable from "../components/ArticleTable";
 import DetailModal from "../components/DetailModal";
 import { ArticleData } from "../components/types";
-import { isNullOrUndefined } from "util";
 
 export default function Home() {
   // ==========================

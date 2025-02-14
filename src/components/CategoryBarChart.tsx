@@ -12,6 +12,10 @@ interface CategoryBarChartProps {
   onBarClick: (category: string) => void;
 }
 
+type PlotClickEvent = {
+  points?: { pointIndex: number }[];
+};
+
 export default function CategoryBarChart({ data, onBarClick }: CategoryBarChartProps) {
   // Count frequencies
   const freqMap: Record<string, number> = {};
@@ -46,7 +50,7 @@ export default function CategoryBarChart({ data, onBarClick }: CategoryBarChartP
   };
 
   // If user clicks on a bar, call onBarClick with that category name
-  function handleClick(ev: any) {
+  function handleClick(ev: PlotClickEvent) {
     if (ev.points && ev.points.length > 0) {
       const idx = ev.points[0].pointIndex;
       const clickedCategory = categories[idx];

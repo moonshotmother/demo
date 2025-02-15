@@ -117,9 +117,10 @@ export default function Home() {
       localStorage.setItem("hasSubmittedEmail", "true");
       setShowOverlay(false);
       setSuccessMessage("Thanks for your submission!");
-    } catch (err: any) {
-      console.error("Form submission error:", err);
-      setErrorMessage(err.message || "Something went wrong.");
+    } catch (err) {
+      const error = err as Error;
+      console.error("Form submission error:", error);
+      setErrorMessage(error.message || "Something went wrong.");
     } finally {
       setIsSubmitting(false);
     }

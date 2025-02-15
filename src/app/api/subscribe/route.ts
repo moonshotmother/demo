@@ -45,7 +45,7 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json({ success: true });
-  } catch (err: any) {
+} catch (err: unknown) {
     console.error("Error appending to Google Sheets:", err);
     return NextResponse.json({ error: "Failed to append to sheet" }, { status: 500 });
   }

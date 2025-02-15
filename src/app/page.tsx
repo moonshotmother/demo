@@ -43,6 +43,90 @@ export default function Home() {
   // NEW: an array of excluded categories
   const [excludedCategories, setExcludedCategories] = useState<string[]>([]);
 
+
+  // ==========================
+  // 1) State and Refs
+  // ==========================
+  const [showOverlay, setShowOverlay] = useState(false);
+  const [email, setEmail] = useState("");
+  const [wantContact, setWantContact] = useState(false);
+  const [questions, setQuestions] = useState("");
+  const [userInfo, setUserInfo] = useState("");
+
+  // For a nicer user prompt: we track if the form is submitting
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
+
+  useEffect(() => {
+    // If user has already submitted, never show overlay
+    const hasSubmitted = localStorage.getItem("hasSubmittedEmail");
+    if (hasSubmitted === "true") return;
+
+    // If overlay was triggered in the past  (meaning they already waited 60s but never submitted)
+    if (localStorage.getItem("overlayTriggeredOnce") === "true") {
+      // Show immediately
+      setShowOverlay(true);
+      return;
+    }
+
+    // Otherwise, set a timer for 60 seconds
+    const timer = setTimeout(() => {
+      localStorage.setItem("overlayTriggeredOnce", "true");
+      setShowOverlay(true);
+    }, 60000); // 60000 ms = 60s
+
+    // Cleanup if user navigates away or unmounts
+    return () => clearTimeout(timer);
+  }, []);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setErrorMessage("");
+    setSuccessMessage("");
+
+    // Email is mandatory
+    if (!email.trim()) {
+      setErrorMessage("Please enter your email address.");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const res = await fetch("/api/subscribe", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email,
+          wantContact,
+          questions,
+          userInfo,
+        }),
+      });
+
+      if (!res.ok) {
+        // Attempt to parse the error from server
+        const data = await res.json();
+        throw new Error(data.error || "Failed to submit form");
+      }
+
+      // On success, mark localStorage so we never show overlay again
+      localStorage.setItem("hasSubmittedEmail", "true");
+      setShowOverlay(false);
+      setSuccessMessage("Thanks for your submission!");
+    } catch (err: any) {
+      console.error("Form submission error:", err);
+      setErrorMessage(err.message || "Something went wrong.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+
+
   // ==========================
   // 2) Load from localStorage on first mount
   // ==========================
@@ -391,193 +475,280 @@ export default function Home() {
   // 12) Render
   // ==========================
   return (
-    <div className="flex h-screen">
-      {/* SIDEBAR */}
-      <Sidebar
-        cagrWeight={cagrWeight}
-        setCagrWeight={setCagrWeight}
-        yearsPenetrationWeight={yearsPenetrationWeight}
-        setYearsPenetrationWeight={setYearsPenetrationWeight}
-        adoptionRiskWeight={adoptionRiskWeight}
-        setAdoptionRiskWeight={setAdoptionRiskWeight}
-        techRiskWeight={techRiskWeight}
-        setTechRiskWeight={setTechRiskWeight}
-        disruptionWeight={disruptionWeight}
-        setDisruptionWeight={setDisruptionWeight}
-        roiWeight={roiWeight}
-        setRoiWeight={setRoiWeight}
-        pinnedCount={pinned.length}
-        TRLWeight={TRLWeight}
-        setTRLWeight={setTRLWeight}
-        timeToTRL7YearsWeight={timeToTRL7YearsWeight}
-        setTimeToTRL7YearsWeight={setTimeToTRL7YearsWeight}
-        usdSavingsPerYearWeight={usdSavingsPerYearWeight}
-        setUsdSavingsPerYearWeight={setUsdSavingsPerYearWeight}
-        noveltyWeight={noveltyWeight}
-        setNoveltyWeight={setNoveltyWeight}
-        numPatentsWeight={numPatentsWeight}
-        setNumPatentsWeight={setNumPatentsWeight}
-        comSuccessProbWeight={comSuccessProbWeight}
-        setComSuccessProbWeight={setComSuccessProbWeight}
-        breakEvenTimeWeight={breakEvenTimeWeight}
-        setBreakEvenTimeWeight={setBreakEvenTimeWeight}
-        competitorsCountWeight={competitorsCountWeight}
-        setCompetitorsCountWeight={setCompetitorsCountWeight}
-        marketShareWeight={marketShareWeight}
-        setMarketShareWeight={setMarketShareWeight}
-        standaloneCommWeight={standaloneCommWeight}
-        setStandaloneCommWeight={setStandaloneCommWeight}
-        improvementWeight={improvementWeight}
-        setImprovementWeight={setImprovementWeight}
-        enablesMarketWeight={enablesMarketWeight}
-        setEnablesMarketWeight={setEnablesMarketWeight}
-        globalMarketLogWeight={globalMarketLogWeight}
-        setGlobalMarketLogWeight={setGlobalMarketLogWeight}
-        annualRevenueLogWeight={annualRevenueLogWeight}
-        setAnnualRevenueLogWeight={setAnnualRevenueLogWeight}
-        rndInvestmentLogWeight={rndInvestmentLogWeight}
-        setRndInvestmentLogWeight={setRndInvestmentLogWeight}
-        scoreThreshold={scoreThreshold}
-        setScoreThreshold={setScoreThreshold}
-      />
+    <div>
 
-      {/* MAIN COLUMN */}
-      <div className="flex-1 flex flex-col p-4 overflow-auto">
-        <div className="mb-4">
-          <h1 className="text-2xl font-bold">Commercial Potential Explorer</h1>
-          <p className="text-sm text-gray-700">
-            Explore thousands of research articles. Adjust weighting in the
-            sidebar to see how their composite viability changes. PCA &amp;
-            clustering reveal patterns. Pin interesting articles as you go.
-          </p>
-        </div>
+      <div className="flex h-screen">
+        {/* SIDEBAR */}
+        <Sidebar
+          cagrWeight={cagrWeight}
+          setCagrWeight={setCagrWeight}
+          yearsPenetrationWeight={yearsPenetrationWeight}
+          setYearsPenetrationWeight={setYearsPenetrationWeight}
+          adoptionRiskWeight={adoptionRiskWeight}
+          setAdoptionRiskWeight={setAdoptionRiskWeight}
+          techRiskWeight={techRiskWeight}
+          setTechRiskWeight={setTechRiskWeight}
+          disruptionWeight={disruptionWeight}
+          setDisruptionWeight={setDisruptionWeight}
+          roiWeight={roiWeight}
+          setRoiWeight={setRoiWeight}
+          pinnedCount={pinned.length}
+          TRLWeight={TRLWeight}
+          setTRLWeight={setTRLWeight}
+          timeToTRL7YearsWeight={timeToTRL7YearsWeight}
+          setTimeToTRL7YearsWeight={setTimeToTRL7YearsWeight}
+          usdSavingsPerYearWeight={usdSavingsPerYearWeight}
+          setUsdSavingsPerYearWeight={setUsdSavingsPerYearWeight}
+          noveltyWeight={noveltyWeight}
+          setNoveltyWeight={setNoveltyWeight}
+          numPatentsWeight={numPatentsWeight}
+          setNumPatentsWeight={setNumPatentsWeight}
+          comSuccessProbWeight={comSuccessProbWeight}
+          setComSuccessProbWeight={setComSuccessProbWeight}
+          breakEvenTimeWeight={breakEvenTimeWeight}
+          setBreakEvenTimeWeight={setBreakEvenTimeWeight}
+          competitorsCountWeight={competitorsCountWeight}
+          setCompetitorsCountWeight={setCompetitorsCountWeight}
+          marketShareWeight={marketShareWeight}
+          setMarketShareWeight={setMarketShareWeight}
+          standaloneCommWeight={standaloneCommWeight}
+          setStandaloneCommWeight={setStandaloneCommWeight}
+          improvementWeight={improvementWeight}
+          setImprovementWeight={setImprovementWeight}
+          enablesMarketWeight={enablesMarketWeight}
+          setEnablesMarketWeight={setEnablesMarketWeight}
+          globalMarketLogWeight={globalMarketLogWeight}
+          setGlobalMarketLogWeight={setGlobalMarketLogWeight}
+          annualRevenueLogWeight={annualRevenueLogWeight}
+          setAnnualRevenueLogWeight={setAnnualRevenueLogWeight}
+          rndInvestmentLogWeight={rndInvestmentLogWeight}
+          setRndInvestmentLogWeight={setRndInvestmentLogWeight}
+          scoreThreshold={scoreThreshold}
+          setScoreThreshold={setScoreThreshold}
+        />
 
-        {/* Color / Cluster Controls */}
-        <div className="flex items-center space-x-4">
-          <label className="block text-sm font-medium">Color By:</label>
-          <select
-            className="border rounded px-2 py-1"
-            value={colorBy}
-            onChange={(e) =>
-              setColorBy(e.target.value as "cluster" | "composite_score")
-            }
-          >
-            <option value="cluster">Cluster</option>
-            <option value="composite_score">Composite Score</option>
-          </select>
+        {/* MAIN COLUMN */}
+        <div className="flex-1 flex flex-col p-4 overflow-auto">
+          <div className="mb-4">
+            <h1 className="text-2xl font-bold">Commercial Potential Explorer</h1>
+            <p className="text-sm text-gray-700">
+              Explore thousands of research articles. Adjust weighting in the
+              sidebar to see how their composite viability changes. PCA &amp;
+              clustering reveal patterns. Pin interesting articles as you go.
+            </p>
+          </div>
 
-          <label className="ml-8 text-sm font-medium">
-            Select a Cluster:
+          {/* Color / Cluster Controls */}
+          <div className="flex items-center space-x-4">
+            <label className="block text-sm font-medium">Color By:</label>
             <select
-              className="ml-2 border rounded px-2 py-1"
-              value={selectedCluster ?? ""}
+              className="border rounded px-2 py-1"
+              value={colorBy}
               onChange={(e) =>
-                setSelectedCluster(
-                  e.target.value === "" ? null : parseInt(e.target.value)
-                )
+                setColorBy(e.target.value as "cluster" | "composite_score")
               }
             >
-              <option value="">All</option>
-              {[0, 1, 2, 3, 4].map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
+              <option value="cluster">Cluster</option>
+              <option value="composite_score">Composite Score</option>
             </select>
-          </label>
-        </div>
 
-
-
-
-
-        {/* SCATTER */}
-        <div className="my-4">
-          {scatterData.length > 0 ? (
-            <ScatterPlot
-              data={scatterData}
-              colorBy={colorBy}
-              onPointClick={handlePointClick}
-            />
-          ) : (
-            <p>No articles above threshold (after exclusion).</p>
-          )}
-        </div>
-
-        {/* Show top 5 categories from the subsetBeforeExclude */}
-        <div className="bg-white p-4 my-4 shadow">
-          <h2 className="text-lg font-bold mb-2">Top 10 Categories (before exclusion)</h2>
-          {topCategories.length === 0 ? (
-            <p className="text-sm text-gray-600">No categories found.</p>
-          ) : (
-            <ul className="list-disc list-inside">
-              {topCategories.map(([cat, count]) => (
-                <li key={cat}>
-                  {cat} ({count}){" "}
-                  <button
-                    onClick={() => excludeCategory(cat)}
-                    className="text-blue-600 hover:underline ml-2"
-                  >
-                    Exclude
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-
-        {/* Show currently excluded categories (with a way to re-include) */}
-        {excludedCategories.length > 0 && (
-          <div className="bg-white p-4 my-4 shadow">
-            <h2 className="text-lg font-bold mb-2">Excluded Categories</h2>
-            <ul className="list-disc list-inside">
-              {excludedCategories.map((cat) => (
-                <li key={cat}>
-                  {cat}
-                  <button
-                    onClick={() => undoExcludeCategory(cat)}
-                    className="text-blue-600 hover:underline ml-2"
-                  >
-                    Undo
-                  </button>
-                </li>
-              ))}
-            </ul>
+            <label className="ml-8 text-sm font-medium">
+              Select a Cluster:
+              <select
+                className="ml-2 border rounded px-2 py-1"
+                value={selectedCluster ?? ""}
+                onChange={(e) =>
+                  setSelectedCluster(
+                    e.target.value === "" ? null : parseInt(e.target.value)
+                  )
+                }
+              >
+                <option value="">All</option>
+                {[0, 1, 2, 3, 4].map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </label>
           </div>
-        )}
 
 
-<div>
-        {/* TABLE */}
-        <ArticleTable articles={tableData} onRowClick={handleRowClick} />
 
-      </div>
-      
-        {/* PINNED LIST */}
-        <div className="mt-4 bg-white p-4 shadow">
-          <h2 className="text-lg font-bold mb-2">Pinned Articles</h2>
-          {pinned.length === 0 ? (
-            <p className="text-gray-600 text-sm">No pinned items yet.</p>
-          ) : (
-            <ul className="list-disc list-inside">
-              {pinned.map((title, i) => (
-                <li key={i}>{title}</li>
-              ))}
-            </ul>
+
+
+          {/* SCATTER */}
+          <div className="my-4">
+            {scatterData.length > 0 ? (
+              <ScatterPlot
+                data={scatterData}
+                colorBy={colorBy}
+                onPointClick={handlePointClick}
+              />
+            ) : (
+              <p>No articles above threshold (after exclusion).</p>
+            )}
+          </div>
+
+          {/* Show top 5 categories from the subsetBeforeExclude */}
+          <div className="bg-white p-4 my-4 shadow">
+            <h2 className="text-lg font-bold mb-2">Top 10 Categories (before exclusion)</h2>
+            {topCategories.length === 0 ? (
+              <p className="text-sm text-gray-600">No categories found.</p>
+            ) : (
+              <ul className="list-disc list-inside">
+                {topCategories.map(([cat, count]) => (
+                  <li key={cat}>
+                    {cat} ({count}){" "}
+                    <button
+                      onClick={() => excludeCategory(cat)}
+                      className="text-blue-600 hover:underline ml-2"
+                    >
+                      Exclude
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          {/* Show currently excluded categories (with a way to re-include) */}
+          {excludedCategories.length > 0 && (
+            <div className="bg-white p-4 my-4 shadow">
+              <h2 className="text-lg font-bold mb-2">Excluded Categories</h2>
+              <ul className="list-disc list-inside">
+                {excludedCategories.map((cat) => (
+                  <li key={cat}>
+                    {cat}
+                    <button
+                      onClick={() => undoExcludeCategory(cat)}
+                      className="text-blue-600 hover:underline ml-2"
+                    >
+                      Undo
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
+
+
+          <div>
+            {/* TABLE */}
+            <ArticleTable articles={tableData} onRowClick={handleRowClick} />
+
+          </div>
+
+          {/* PINNED LIST */}
+          <div className="mt-4 bg-white p-4 shadow">
+            <h2 className="text-lg font-bold mb-2">Pinned Articles</h2>
+            {pinned.length === 0 ? (
+              <p className="text-gray-600 text-sm">No pinned items yet.</p>
+            ) : (
+              <ul className="list-disc list-inside">
+                {pinned.map((title, i) => (
+                  <li key={i}>{title}</li>
+                ))}
+              </ul>
+            )}
+          </div>
         </div>
+
+
+
+
+        {/* DETAIL MODAL */}
+        <DetailModal
+          article={selectedArticle}
+          onClose={() => closeModal()}
+          pinned={selectedArticle ? pinned.includes(selectedArticle.title) : false}
+          onPin={togglePin}
+        />
       </div>
 
 
+      {showOverlay && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-70 z-50">
+          <div className="bg-white rounded-lg shadow-lg p-6 max-w-lg w-full mx-4 relative">
+            <h2 className="text-xl font-bold mb-2">Thanks for using the demo!</h2>
+            <p className="text-gray-700 mb-4">
+              You’ve been on the site for around 1 minute. So that I can track interest,
+              please enter your email address (mandatory) and any other details you feel comfortable sharing.
+              After submitting, you’ll have unlimited free use on this device.
+            </p>
 
+            {/* Possible success / error messages */}
+            {successMessage && (
+              <div className="bg-green-100 text-green-800 p-2 mb-2 rounded">
+                {successMessage}
+              </div>
+            )}
+            {errorMessage && (
+              <div className="bg-red-100 text-red-800 p-2 mb-2 rounded">
+                {errorMessage}
+              </div>
+            )}
 
-      {/* DETAIL MODAL */}
-      <DetailModal
-        article={selectedArticle}
-        onClose={() => closeModal()}
-        pinned={selectedArticle ? pinned.includes(selectedArticle.title) : false}
-        onPin={togglePin}
-      />
+            <form onSubmit={handleSubmit}>
+              {/* EMAIL (required) */}
+              <label className="block mb-2 font-medium">
+                Email (required)
+                <input
+                  type="email"
+                  className="block w-full mt-1 p-2 border rounded"
+                  placeholder="your.email@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
+              </label>
+
+              {/* OPTIONAL: Checkbox for private showcase */}
+              <label className="flex items-center space-x-2 mb-2">
+                <input
+                  type="checkbox"
+                  checked={wantContact}
+                  onChange={(e) => setWantContact(e.target.checked)}
+                />
+                <span>Yes, please reach out to me for a private showcase</span>
+              </label>
+
+              {/* OPTIONAL: Any questions or feedback */}
+              <label className="block mb-2 font-medium">
+                Questions or Feedback
+                <textarea
+                  className="block w-full mt-1 p-2 border rounded"
+                  rows={3}
+                  placeholder="Let us know your thoughts..."
+                  value={questions}
+                  onChange={(e) => setQuestions(e.target.value)}
+                />
+              </label>
+
+              {/* OPTIONAL: Info about the user (name, company, interests) */}
+              <label className="block mb-2 font-medium">
+                Additional Info (e.g. name, company, interests)
+                <textarea
+                  className="block w-full mt-1 p-2 border rounded"
+                  rows={3}
+                  placeholder="Share anything you'd like..."
+                  value={userInfo}
+                  onChange={(e) => setUserInfo(e.target.value)}
+                />
+              </label>
+
+              <button
+                type="submit"
+                className="mt-4 px-4 py-2 bg-blue-600 text-white font-semibold rounded hover:bg-blue-700 disabled:bg-gray-400"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? "Submitting..." : "Submit"}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

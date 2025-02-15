@@ -25,11 +25,16 @@ export async function POST(request: Request) {
     );
     const sheets = google.sheets({ version: "v4", auth });
 
+
+    const forwardedFor = request.headers.get("x-forwarded-for") || "";
+    // The first item in x-forwarded-for is usually the actual client IP
+    const ipAddress = forwardedFor.split(",")[0].trim() || "Unknown IP";
+
     // Append the form data to your Google Sheet
     // Update range and columns as needed
     await sheets.spreadsheets.values.append({
       spreadsheetId: process.env.SPREADSHEET_ID,
-      range: "Sheet1!A:D", // e.g. first 4 columns of "Sheet1"
+      range: "Sheet1!A:E", // e.g. first 4 columns of "Sheet1"
       valueInputOption: "USER_ENTERED",
       requestBody: {
         values: [
@@ -39,6 +44,7 @@ export async function POST(request: Request) {
             wantContact ? "Yes" : "No",
             questions || "",
             userInfo || "",
+            ipAddress
           ],
         ],
       },

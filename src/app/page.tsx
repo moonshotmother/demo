@@ -574,10 +574,6 @@ export default function Home() {
             </label>
           </div>
 
-
-
-
-
           {/* SCATTER */}
           <div className="my-4">
             {scatterData.length > 0 ? (

@@ -34,3 +34,33 @@ export interface ArticleData {
     cluster?: number;
   }
   
+
+  export interface Weights {
+    // Rate
+    cagrWeight: number;
+    roiWeight: number;
+    disruptionWeight: number;
+    usdSavingsPerYearWeight: number;
+    noveltyWeight: number;
+    improvementWeight: number;
+    comSuccessProbWeight: number;
+    standaloneCommWeight: number;
+  
+    // Longevity
+    yearsPenetrationWeight: number;
+    adoptionRiskWeight: number;
+    techRiskWeight: number;
+    TRLWeight: number;
+    timeToTRL7YearsWeight: number;
+    breakEvenTimeWeight: number;
+    numPatentsWeight: number;
+  
+    // Market
+    competitorsCountWeight: number;
+    marketShareWeight: number;
+    enablesMarketWeight: number;
+    globalMarketLogWeight: number;
+    annualRevenueLogWeight: number;
+    rndInvestmentLogWeight: number;
+  }
+  

@@ -11,13 +11,11 @@ const Plot = dynamic(() => import("react-plotly.js"), {
 
 interface ScatterPlotProps {
   data: ArticleData[];
-  colorBy: "cluster" | "composite_score";
   onPointClick: (article: ArticleData) => void;
 }
 
 export default function ScatterPlot({
   data,
-  colorBy,
   onPointClick,
 }: ScatterPlotProps) {
   // Extract X and Y for each article
@@ -26,13 +24,7 @@ export default function ScatterPlot({
 
   // Prepare color array
   const colorVals: number[] = data.map((d) => {
-    if (colorBy === "cluster") {
-      // cluster is integer or undefined
-      return d.cluster ?? 0;
-    } else {
-      // composite_score is float or undefined
       return d.compositeScore ?? 0;
-    }
   });
 
   // Prepare a single trace for the scatterplot
@@ -44,7 +36,9 @@ export default function ScatterPlot({
     marker: {
       color: colorVals,
       colorscale: "RdBu", // or any valid Plotly colorscale
-      showscale: colorBy !== "cluster", // Show legend scale only for composite_score
+      showscale: true, // Show legend scale only for composite_score
+      cmin: 0,
+      cmax: 1,
       size: 8,
     },
     type: "scatter" as const, // 'scatter' is correct for points

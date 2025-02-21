@@ -47,7 +47,6 @@ export default function ArticleTable({
             <th className="px-4 py-2">Annual Revenue logged</th>
             <th className="px-4 py-2">Investment Required logged</th>
             <th className="px-4 py-2">Categories</th>
-            <th className="px-4 py-2">Cluster</th>
           </tr>
         </thead>
         <tbody>
@@ -105,7 +104,6 @@ export default function ArticleTable({
               <td className="px-4 py-2">{a.annual_revenue_USD_log.toFixed(2)}</td>
               <td className="px-4 py-2">{a.rnd_investment_required_log.toFixed(2)}</td>
               <td className="px-4 py-2">{a.categories}</td>
-              <td className="px-4 py-2">{a.cluster !== undefined ? a.cluster : "--"}</td>
             </tr>
           )})}
         </tbody>

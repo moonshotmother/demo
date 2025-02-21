@@ -64,10 +64,6 @@ export default function Home() {
     })
   );
 
-  // For performance, store them in a ref while the user is adjusting, then only commit
-  // them with a button press or small debounce. (Demo’d here with an “Apply changes” button.)
-  const tempWeightsRef = useRef(weights);
-
   // The user’s investor profile (rate/longevity/market)
   const [investorProfile, setInvestorProfile] = useState<{
     rate: number;

@@ -94,7 +94,7 @@ export default function TernaryPlot({ initialRate, initialLongevity, initialMark
     const localX = offsetX - 50;
     const localY = offsetY - 40;
 
-    let { r, l, m } = xyToBarycentric(localX, localY);
+    const { r, l, m } = xyToBarycentric(localX, localY);
     const { r: rr, l: ll, m: mm } = clamp(r, l, m);
     const { x, y } = barycentricToXY(rr, ll, mm);
 

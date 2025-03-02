@@ -30,10 +30,12 @@ export default function DetailModal({
   Explain different commercial applications that could be derived from this research. Consider different industries.
   `;
 
-
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-      <div className="bg-white p-6 rounded shadow-lg w-2/3 relative">
+    <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-2">
+      <div
+        className="bg-white p-6 rounded shadow-lg w-full md:w-2/3 max-w-3xl relative 
+                   max-h-[90vh] overflow-y-auto"
+      >
         <button
           className="absolute top-2 right-2 text-gray-500"
           onClick={onClose}
@@ -44,10 +46,10 @@ export default function DetailModal({
         <p className="text-sm text-gray-600 mb-4">{article.abstract}</p>
         <p className="text-sm text-gray-600 mb-4">{article.categories}</p>
 
-        <ChatGPTButton query={prompt}/>
+        <ChatGPTButton query={prompt} />
 
-        <div className="grid grid-cols-2 gap-4">
-          <div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+          <div className="text-sm space-y-1">
             <p>Composite: {article.compositeScore?.toFixed(3)}</p>
             <p>CAGR: {article.CAGR.toFixed(2)}</p>
             <p>Years to 50% Penetration: {article.years_to_50pct_penetration.toFixed(2)}</p>
@@ -58,6 +60,8 @@ export default function DetailModal({
             <p>Patents: {article.number_distinct_patents.toFixed(2)}</p>
             <p>Commercial Chance %: {article.commercialisation_success_probability_percent.toFixed(2)}</p>
             <p>Break Even Years: {article.break_even_time_years.toFixed(2)}</p>
+          </div>
+          <div className="text-sm space-y-1">
             <p>Adoption Risk: {article.adoption_risk_1_to_10.toFixed(2)}</p>
             <p>Tech Risk: {article.technological_risk_1_to_10.toFixed(2)}</p>
             <p>Competitiors: {article.competitors_count.toFixed(2)}</p>

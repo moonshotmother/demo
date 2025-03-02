@@ -45,7 +45,6 @@ export default function EmailPromptModal({
       localStorage.setItem("hasSubmittedEmail", "true");
 
       setSuccessMessage("Thanks for your submission!");
-      // You can wait a moment or just immediately call onClose
       onClose();
     } catch (err) {
       const e = err as Error;
@@ -57,13 +56,13 @@ export default function EmailPromptModal({
   }
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-70 z-50">
-      <div className="bg-white rounded-lg shadow-lg p-6 max-w-lg w-full mx-4 relative">
+    <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-70 z-50 px-2">
+      <div className="bg-white rounded-lg shadow-lg p-6 max-w-lg w-full relative max-h-[90vh] overflow-y-auto">
         <h2 className="text-xl font-bold mb-2">Thanks for using the demo!</h2>
         <p className="text-gray-700 mb-4">
           You’ve been on the site for around 1 minute. Please enter your email
-          and any other details you feel comfortable sharing. Afterwards, you’ll have
-          unlimited free use on this device.
+          and any other details you feel comfortable sharing. Afterwards, you’ll
+          have unlimited free use on this device.
         </p>
 
         {successMessage && (
@@ -119,10 +118,10 @@ export default function EmailPromptModal({
             />
           </label>
 
-          <div className="flex justify-end mt-4">
+          <div className="flex flex-col sm:flex-row justify-end mt-4 space-y-2 sm:space-y-0 sm:space-x-2">
             <button
               type="button"
-              className="mr-2 px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300"
+              className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300"
               onClick={onDismiss}
             >
               Dismiss

@@ -24,7 +24,7 @@ export default function ScatterPlot({
 
   // Prepare color array
   const colorVals: number[] = data.map((d) => {
-      return d.compositeScore ?? 0;
+    return d.compositeScore ?? 0;
   });
 
   // Prepare a single trace for the scatterplot
@@ -35,26 +35,25 @@ export default function ScatterPlot({
     text: data.map((d) => d.title),
     marker: {
       color: colorVals,
-      colorscale: "RdBu", // or any valid Plotly colorscale
-      showscale: true, // Show legend scale only for composite_score
+      colorscale: "RdBu",
+      showscale: true,
       cmin: 0,
       cmax: 1,
       size: 8,
     },
-    type: "scatter" as const, // 'scatter' is correct for points
+    type: "scatter" as const,
   };
 
-  // Layout config
+  // Make the chart responsive
   const layout = {
     title: "PCA Scatter",
     hovermode: "closest" as const,
-    width: 800,
-    height: 600,
+    autosize: true,
+    margin: { l: 40, r: 20, t: 40, b: 40 },
   };
 
   // Click handler from Plotly event
-  
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleClick = (ev: any) => {
     if (ev.points && ev.points.length > 0) {
       const idx = ev.points[0].pointIndex;
@@ -63,11 +62,14 @@ export default function ScatterPlot({
   };
 
   return (
-    <div>
-      <Plot 
+    <div className="w-full h-[400px] md:h-[600px]">
+      <Plot
         data={[trace]}
         layout={layout}
         onClick={handleClick}
+        style={{ width: "100%", height: "100%" }}
+        useResizeHandler={true}
+        config={{ responsive: true }}
       />
     </div>
   );

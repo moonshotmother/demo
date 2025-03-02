@@ -43,7 +43,11 @@ export default function EmailPromptBar({ onSubmitted }: EmailPromptBarProps) {
 
   return (
     <div className="fixed bottom-0 left-0 right-0 bg-gray-100 border-t p-3 z-50">
-      <form onSubmit={handleSubmit} className="flex items-center justify-center space-x-2">
+      <form
+        onSubmit={handleSubmit}
+        className="flex flex-col items-center justify-center space-y-2
+                   md:flex-row md:space-y-0 md:space-x-2"
+      >
         <label className="block font-medium">
           <span className="mr-1">Enter Email:</span>
           <input

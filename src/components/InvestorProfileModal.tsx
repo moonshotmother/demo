@@ -11,7 +11,7 @@ export default function InvestorProfileModal({
   onSave,
 }: InvestorProfileModalProps) {
   // Each question is rated 1..5
-  // We'll have 9 questions: 3 for Rate vs. Longevity, 3 for Rate vs. Market, 3 for Longevity vs. Market
+  // We'll have 9 questions
   const [answers, setAnswers] = useState<number[]>(Array(9).fill(3)); // default = 3 ("neutral")
 
   const questions = [
@@ -75,7 +75,6 @@ export default function InvestorProfileModal({
     });
   }
 
-  // Compute final weighting for each dimension
   function handleSubmit() {
     let rateScore = 0;
     let longevityScore = 0;
@@ -83,7 +82,6 @@ export default function InvestorProfileModal({
 
     questions.forEach((q, idx) => {
       const ans = answers[idx];
-      // Map 1..5 to -2..+2 => factorX gets + for higher answers, factorY gets + for lower
       const offset = ans - 3; // range: -2..+2
 
       if (q.factorX === "rate") rateScore += offset;
@@ -95,7 +93,6 @@ export default function InvestorProfileModal({
       if (q.factorY === "market") marketScore -= offset;
     });
 
-    // Normalization
     const total =
       Math.abs(rateScore) + Math.abs(longevityScore) + Math.abs(marketScore);
     let wRate = 0;
@@ -103,12 +100,10 @@ export default function InvestorProfileModal({
     let wMarket = 0;
 
     if (total !== 0) {
-      wRate = (rateScore / total + 1) / 2; // shift -1..+1 to 0..1
+      wRate = (rateScore / total + 1) / 2;
       wLong = (longevityScore / total + 1) / 2;
       wMarket = (marketScore / total + 1) / 2;
     }
-
-    // Ensure they sum up to 1
     const sum = wRate + wLong + wMarket;
     if (sum > 0) {
       wRate /= sum;
@@ -120,7 +115,6 @@ export default function InvestorProfileModal({
     onClose();
   }
 
-  // Optional labels you might want to show (tooltips, aria-labels, etc.)
   const likertLabels = [
     "Strongly Disagree",
     "Disagree",
@@ -130,9 +124,8 @@ export default function InvestorProfileModal({
   ];
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-70 z-50">
-      <div className="bg-white p-6 rounded-xl shadow-lg max-w-3xl w-full relative">
-        {/* Close button (if you like a dismiss icon) */}
+    <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-70 z-50 p-2">
+      <div className="bg-white p-6 rounded-xl shadow-lg max-w-3xl w-full md:w-3/4 mx-auto relative max-h-[90vh] overflow-y-auto">
         <button
           onClick={onClose}
           className="absolute top-3 right-3 text-gray-500 hover:text-gray-700"
@@ -157,7 +150,7 @@ export default function InvestorProfileModal({
               className="rounded-lg bg-gray-50 p-4 border border-gray-200"
             >
               <p className="font-medium text-gray-800 mb-3">{q.text}</p>
-              <div className="flex items-center space-x-2 justify-between max-w-md">
+              <div className="flex items-center space-x-2 justify-between max-w-md mx-auto">
                 {[1, 2, 3, 4, 5].map((v, idx) => (
                   <label
                     key={v}
@@ -168,7 +161,7 @@ export default function InvestorProfileModal({
                         ? "bg-blue-600 text-white border-blue-600"
                         : "bg-white border-gray-300 text-gray-600 hover:bg-blue-50"
                     }`}
-                    title={likertLabels[idx]} // tooltip
+                    title={likertLabels[idx]}
                   >
                     <input
                       type="radio"
@@ -176,7 +169,7 @@ export default function InvestorProfileModal({
                       value={v}
                       checked={answers[i] === v}
                       onChange={() => handleChange(i, v)}
-                      className="hidden" // Hide the raw radio, we'll style with the label
+                      className="hidden"
                     />
                     <span className="text-lg font-semibold">{v}</span>
                   </label>

@@ -1,6 +1,6 @@
 "use client";
 import React from "react";
-import { Weights } from "./types"; // or inline the Weights interface
+import { Weights } from "./types";
 
 interface AdvancedSettingsDrawerProps {
   isOpen: boolean;
@@ -34,7 +34,6 @@ export default function AdvancedSettingsDrawer({
 
   return (
     <>
-      {/* Backdrop */}
       {isOpen && (
         <div
           className="fixed inset-0 bg-black bg-opacity-40"
@@ -43,11 +42,11 @@ export default function AdvancedSettingsDrawer({
         />
       )}
 
-      {/* Sliding drawer */}
       <div
-        className={`fixed top-0 right-0 h-full w-80 bg-white border-l
+        className={`fixed top-0 right-0 h-full bg-white border-l
                     shadow-xl p-4 overflow-y-auto transition-transform duration-300
-                    ${isOpen ? "translate-x-0" : "translate-x-full"}`}
+                    ${isOpen ? "translate-x-0" : "translate-x-full"}
+                    md:w-80 w-full`}
         style={{ zIndex: 9999 }}
       >
         <div className="flex justify-between items-center mb-4">
@@ -178,7 +177,6 @@ export default function AdvancedSettingsDrawer({
   );
 }
 
-/** A small helper row for each slider: label, numeric readout, and range input. */
 function SliderRow({
   label,
   value,

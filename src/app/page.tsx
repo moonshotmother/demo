@@ -27,14 +27,11 @@ function loadFromLocalStorage<T>(key: string, defaultVal: T): T {
 }
 
 export default function Home() {
-  // ==========================
   // Persistent state
-  // ==========================
   const [scoreThreshold, setScoreThreshold] = useState(0.7);
   const [pinned, setPinned] = useState<string[]>([]);
   const [excludedCategories, setExcludedCategories] = useState<string[]>([]);
 
-  // Group all slider weights into a single object.
   const [weights, setWeights] = useState(() =>
     loadFromLocalStorage("weights", {
       // Rate
@@ -71,31 +68,21 @@ export default function Home() {
     market: number;
   } | null>(null);
 
-  // Classification message from the user’s ternary distribution
   const [userMessage, setUserMessage] = useState<ProfileMessage | null>(null);
-
 
   const [showModal, setShowModal] = useState(false);
   const [showBar, setShowBar] = useState(false);
 
-
   const [drawerOpen, setDrawerOpen] = useState(false);
 
-  // The data from /data.json
   const [rawData, setRawData] = useState<ArticleData[]>([]);
-  // Store PCA results (pcaX, pcaY) in state, so we don’t re-run PCA on every render
   const [pcaData, setPcaData] = useState<{ x: number; y: number }[]>([]);
-  // Final computed data (after weighting -> composite score) 
   const [processedData, setProcessedData] = useState<ArticleData[]>([]);
 
-  // For the detail modal
   const [selectedArticle, setSelectedArticle] = useState<ArticleData | null>(null);
 
-  // ==========================
-  // On mount: localStorage + investorProfile + overlay
-  // ==========================
+  // Load from localStorage on mount
   useEffect(() => {
-    // Load pinned/excluded categories/threshold from localStorage
     const saved = loadFromLocalStorage("myAppState", {
       scoreThreshold: 0.7,
       pinned: [] as string[],
@@ -105,69 +92,35 @@ export default function Home() {
     setPinned(saved.pinned);
     setExcludedCategories(saved.excludedCategories);
 
-    // Investor profile
     const storedProfile = localStorage.getItem("investorProfile");
     if (storedProfile) {
       setInvestorProfile(JSON.parse(storedProfile));
-    } else {
-      // Show the investor profile modal if not saved
-      // (this is optional, depends on your desired workflow)
     }
 
-    // Check localStorage on mount
+    // Email submission checks
     const hasSubmitted = localStorage.getItem("hasSubmittedEmail") === "true";
     if (hasSubmitted) {
-      // user already submitted => do nothing
       return;
     }
-    // If not submitted, let's see if they've dismissed
     const overlayTriggered = localStorage.getItem("overlayTriggeredOnce") === "true";
     const hasDismissed = localStorage.getItem("hasDismissedEmailModal") === "true";
 
     if (!overlayTriggered) {
-      // Wait 60s, then show modal
       const timer = setTimeout(() => {
         localStorage.setItem("overlayTriggeredOnce", "true");
         setShowModal(true);
-      }, 60000);
+      }, 80000);
       return () => clearTimeout(timer);
     } else {
-      // Already triggered once
       if (!hasDismissed) {
-        // If they haven't dismissed, show the modal
         setShowModal(true);
       } else {
-        // They dismissed => show the bottom bar
         setShowBar(true);
       }
     }
   }, []);
 
-  // 1. If user closes the modal by submitting (onClose):
-  // => they have "hasSubmittedEmail=true" in localStorage
-  // => so we hide everything permanently
-  function handleModalClose() {
-    setShowModal(false);
-    setShowBar(false);
-  }
-
-  // 2. If user dismisses the modal (onDismiss):
-  // => store that they have dismissed, so the next refresh won't show modal but bar.
-  // => then we hide the modal & show bottom bar.
-  function handleModalDismiss() {
-    localStorage.setItem("hasDismissedEmailModal", "true");
-    setShowModal(false);
-    setShowBar(true);
-  }
-
-  // 3. If user submits from the bottom bar
-  // => same logic: they've submitted => hide bar, done.
-  function handleBarSubmitted() {
-    setShowBar(false);
-  }
-
-
-  // Update user message based on investorProfile
+  // If user has an investorProfile, show the classification message
   useEffect(() => {
     if (!investorProfile) return;
     const msg = classifyProfile(
@@ -178,16 +131,13 @@ export default function Home() {
     setUserMessage(msg);
   }, [investorProfile]);
 
-  // ==========================
-  // On first mount: fetch data => run PCA once
-  // ==========================
+  // Fetch data + PCA
   useEffect(() => {
     fetch("/data.json")
       .then((res) => res.json())
       .then((data: ArticleData[]) => {
         setRawData(data);
 
-        // 1) Build matrix for PCA
         const numericCols = [
           "CAGR",
           "years_to_50pct_penetration",
@@ -219,11 +169,9 @@ export default function Home() {
           })
         );
 
-        // 2) Run PCA once
         const pcaModel = new PCA(matrix, { method: "SVD", center: true, scale: false });
         const coords = pcaModel.predict(matrix, { nComponents: 2 });
 
-        // 3) Store pca coords in array
         const nextPcaData = data.map((_, i) => ({
           x: coords.get(i, 0),
           y: coords.get(i, 1),
@@ -233,9 +181,7 @@ export default function Home() {
       .catch((err) => console.error(err));
   }, []);
 
-  // ==========================
-  // Recompute composite scores (only) whenever rawData or weights change
-  // ==========================
+  // Compute composite scores
   const computeComposite = useCallback(
     (d: ArticleData) => {
       const w = weights;
@@ -266,10 +212,8 @@ export default function Home() {
     [weights]
   );
 
-  // Actually build processed data with new composite, then normalize
   useEffect(() => {
     if (!rawData.length || !pcaData.length) return;
-    // 1) compute composite raw
     const updated = rawData.map((d, i) => {
       const cScore = computeComposite(d);
       return {
@@ -280,7 +224,6 @@ export default function Home() {
       };
     });
 
-    // 2) Normalize
     const minC = Math.min(...updated.map((u) => u.compositeScore ?? 0));
     const maxC = Math.max(...updated.map((u) => u.compositeScore ?? 1));
     const finalData = updated.map((u) => {
@@ -292,9 +235,6 @@ export default function Home() {
     setProcessedData(finalData);
   }, [rawData, pcaData, computeComposite]);
 
-  // ==========================
-  // Memorize the final filtered set
-  // ==========================
   const filteredData = useMemo(() => {
     if (!processedData.length) return [];
     const afterThreshold = processedData.filter((d) => (d.compositeScore ?? 0) >= scoreThreshold);
@@ -305,7 +245,6 @@ export default function Home() {
     });
   }, [processedData, scoreThreshold, excludedCategories]);
 
-  // Also track top 10 categories in the thresholded set, ignoring excludes
   const topCategories = useMemo(() => {
     const subsetBeforeExclude = processedData.filter((d) => (d.compositeScore ?? 0) >= scoreThreshold);
     const freqMap: Record<string, number> = {};
@@ -319,9 +258,6 @@ export default function Home() {
     return sorted.slice(0, 10);
   }, [processedData, scoreThreshold]);
 
-  // ==========================
-  // Handlers
-  // ==========================
   function handleRowOrPointClick(a: ArticleData) {
     setSelectedArticle(a);
   }
@@ -345,7 +281,6 @@ export default function Home() {
     setSelectedArticle(null);
   }
 
-  // Save to localStorage whenever pinned/excludes/threshold/weights change
   useEffect(() => {
     localStorage.setItem(
       "myAppState",
@@ -361,15 +296,26 @@ export default function Home() {
     localStorage.setItem("weights", JSON.stringify(weights));
   }, [weights]);
 
-  // ==========================
-  // Investor Profile
-  // ==========================
+  function handleModalClose() {
+    setShowModal(false);
+    setShowBar(false);
+  }
+
+  function handleModalDismiss() {
+    localStorage.setItem("hasDismissedEmailModal", "true");
+    setShowModal(false);
+    setShowBar(true);
+  }
+
+  function handleBarSubmitted() {
+    setShowBar(false);
+  }
+
   function handleProfileSave(p: { rate: number; longevity: number; market: number }) {
     setInvestorProfile(p);
     localStorage.setItem("investorProfile", JSON.stringify(p));
   }
 
-  // Example: update all weights at once
   function updateAllWeights(r: number, l: number, m: number) {
     setWeights((old) => ({
       ...old,
@@ -400,19 +346,13 @@ export default function Home() {
     }));
   }
 
-  // ==========================
-  // Return JSX
-  // ==========================
   return (
-    <div className="w-full h-full flex">
-      {/* Possibly lazy-load the modal */}
+    <div className="w-full min-h-screen flex flex-col md:flex-row">
       {investorProfile === null && (
-        <InvestorProfileModal onClose={() => { }} onSave={handleProfileSave} />
+        <InvestorProfileModal onClose={() => {}} onSave={handleProfileSave} />
       )}
 
-
       <div className="flex-1 flex flex-col p-4 overflow-auto">
-
         <header className="h-12 bg-gray-200 flex items-center justify-between px-4">
           <h1 className="font-bold">My App</h1>
           <button
@@ -423,8 +363,7 @@ export default function Home() {
           </button>
         </header>
 
-
-        <h1 className="text-2xl font-bold mb-2">Commercial Potential Explorer</h1>
+        <h1 className="text-2xl font-bold mt-4">Commercial Potential Explorer</h1>
 
         {investorProfile && (
           <div className="mb-4">
@@ -439,9 +378,9 @@ export default function Home() {
               }}
             />
             <p className="text-sm">
-              Rate: {(investorProfile.rate * 100).toFixed(1)}% |
-              Longevity: {(investorProfile.longevity * 100).toFixed(1)}% |
-              Market: {(investorProfile.market * 100).toFixed(1)}%
+              Rate: {(investorProfile.rate * 100).toFixed(1)}% | Longevity:{" "}
+              {(investorProfile.longevity * 100).toFixed(1)}% | Market:{" "}
+              {(investorProfile.market * 100).toFixed(1)}%
             </p>
           </div>
         )}
@@ -464,7 +403,6 @@ export default function Home() {
           )}
         </div>
 
-        {/* Score threshold slider below the scatter plot */}
         <div className="mt-4">
           <label className="block text-sm mb-1">
             Score Threshold: {scoreThreshold.toFixed(2)}
@@ -544,7 +482,6 @@ export default function Home() {
           onPin={togglePin}
         />
 
-        {/* Our advanced settings drawer */}
         <AdvancedSettingsDrawer
           isOpen={drawerOpen}
           onClose={() => setDrawerOpen(false)}
@@ -553,8 +490,6 @@ export default function Home() {
         />
       </div>
 
-
-      {/* The big modal, only if showModal = true */}
       {showModal && (
         <EmailPromptModal
           onClose={handleModalClose}
@@ -562,7 +497,6 @@ export default function Home() {
         />
       )}
 
-      {/* The bottom bar, only if showBar = true */}
       {showBar && <EmailPromptBar onSubmitted={handleBarSubmitted} />}
     </div>
   );

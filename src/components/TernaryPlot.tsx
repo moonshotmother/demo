@@ -20,9 +20,13 @@ export default function TernaryPlot({ initialRate, initialLongevity, initialMark
   const [isDragging, setIsDragging] = useState(false);
   const [pos, setPos] = useState({ x: 0, y: 0 });
 
-  const A = { x: 0,   y: 0 };
+  // Make the triangle bigger on bigger screens, smaller on mobile
+  const width = 200;
+  const height = 180;
+
+  const A = { x: 0, y: 0 };
   const B = { x: 100, y: 0 };
-  const C = { x: 50,  y: 86.6 };
+  const C = { x: 50, y: 86.6 };
 
   const svgRef = useRef<SVGSVGElement>(null);
 
@@ -104,16 +108,17 @@ export default function TernaryPlot({ initialRate, initialLongevity, initialMark
     setLocalM(mm);
   }
 
-  // If parent updates initialRate/initialLongevity/initialMarket from outside,
-  // you can sync it inside. But that might lead to re-renders while dragging
-  // so we typically skip it. If you do want it, you'd do a useEffect to setLocalR here.
-
   return (
     <svg
       ref={svgRef}
-      width={200}
-      height={180}
-      style={{ touchAction: "none", cursor: isDragging ? "grabbing" : "grab" }}
+      width={width}
+      height={height}
+      style={{
+        touchAction: "none",
+        cursor: isDragging ? "grabbing" : "grab",
+        maxWidth: "100%", // Make it shrink on small screens
+        height: "auto",
+      }}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}

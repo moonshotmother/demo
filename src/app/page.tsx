@@ -6,7 +6,6 @@ import { PCA } from "ml-pca";
 
 // Lazy-load large/rarely used component
 
-
 const ScatterPlot = dynamic(() => import("../components/ScatterPlot"), { ssr: false });
 const ArticleTable = dynamic(() => import("../components/ArticleTable"), { ssr: false });
 const DetailModal = dynamic(() => import("../components/DetailModal"), { ssr: false });
@@ -466,6 +465,17 @@ export default function Home() {
           </button>
         </header>
 
+        {/* 
+          Article Table now shows only:
+          - Title
+          - ChatGPT link
+          - Composite Score
+          - Rate
+          - Longevity
+          - Market
+        */}
+        <ArticleTable articles={filteredData} onRowClick={handleRowOrPointClick} />
+
         <h1 className="text-2xl font-bold mt-4">Commercial Potential Explorer</h1>
 
         {investorProfile && (
@@ -562,17 +572,6 @@ export default function Home() {
             </ul>
           </div>
         )}
-
-        {/* 
-          Article Table now shows only:
-          - Title
-          - ChatGPT link
-          - Composite Score
-          - Rate
-          - Longevity
-          - Market
-        */}
-        <ArticleTable articles={filteredData} onRowClick={handleRowOrPointClick} />
 
         <div className="mt-4 bg-white p-4 shadow">
           <h2 className="text-lg font-bold mb-2">Pinned Articles</h2>

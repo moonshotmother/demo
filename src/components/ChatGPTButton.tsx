@@ -1,4 +1,5 @@
 "use client";
+
 function ChatGPTButton({ query }: { query: string }) {
     const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
       event.stopPropagation();

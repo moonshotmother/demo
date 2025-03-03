@@ -1,17 +1,23 @@
 "use client";
+
 import { useState, useEffect, useMemo, useCallback } from "react";
 import dynamic from "next/dynamic";
 import { PCA } from "ml-pca";
 
 // Lazy-load large/rarely used components
+
+
 const ScatterPlot = dynamic(() => import("../components/ScatterPlot"), { ssr: false });
 const ArticleTable = dynamic(() => import("../components/ArticleTable"), { ssr: false });
 const DetailModal = dynamic(() => import("../components/DetailModal"), { ssr: false });
 const InvestorProfileModal = dynamic(() => import("../components/InvestorProfileModal"), { ssr: false });
 const TernaryPlot = dynamic(() => import("@/components/TernaryPlot"), { ssr: false });
+const AdvancedSettingsDrawer = dynamic(() => import('../components/AdvancedSettingsDrawer'), {
+  ssr: false,
+});
+
 import { classifyProfile, ProfileMessage } from "@/utils/profileMessages";
 import { ArticleData } from "../components/types";
-import AdvancedSettingsDrawer from "@/components/AdvancedSettingsDrawer";
 import EmailPromptModal from "@/components/EmailPromptModal";
 import EmailPromptBar from "@/components/EmailPromptBar";
 
@@ -26,10 +32,56 @@ function loadFromLocalStorage<T>(key: string, defaultVal: T): T {
   }
 }
 
+// ------------------------------
+// Helpers to compute the fixed Rate / Longevity / Market metrics
+// for each article (they do NOT change with user weighting).
+// You can adjust these formulas if needed to better fit your data.
+// ------------------------------
+function computeFixedRate(d: ArticleData): number {
+  // Summation of fields relevant to "rate of return"
+  // (Adjust as desired; e.g. you might want to scale or average them.)
+
+  return (
+    1/8 * (d.CAGR ?? 0) +
+    1/8 * (d.ROI_percent ?? 0) +
+    1/8 * (d.disruption_score_1_to_10 ?? 0) +
+    1/8 * (d.usd_savings_per_year ?? 0) +
+    1/8 * (d.novelty_1_to_10 ?? 0) +
+    1/8 * (d.improvement_compared_to_existing_1_to_10 ?? 0) +
+    1/8 * (d.commercialisation_success_probability_percent ?? 0) +
+    1/8 * (d.standalone_commericality_1_to_10 ?? 0)
+  );
+}
+
+function computeFixedLongevity(d: ArticleData): number {
+  // Summation of fields relevant to "longevity"
+  return (
+    - 1/7 * (d.years_to_50pct_penetration ?? 0) +
+    - 1/7 * (d.adoption_risk_1_to_10 ?? 0) +
+    - 1/7 * (d.technological_risk_1_to_10 ?? 0) +
+      1/7 * (d.TRL ?? 0) +
+    - 1/7 * (d.time_to_TRL_7_years ?? 0) +
+    - 1/7 * (d.break_even_time_years ?? 0) +
+      1/7 * (d.number_distinct_patents ?? 0)
+  );
+}
+
+function computeFixedMarket(d: ArticleData): number {
+  // Summation of fields relevant to "market size"
+  return (
+    - 1/6 * (d.competitors_count ?? 0) +
+      1/6 * (d.five_year_market_share_percent ?? 0) +
+      1/6 * (d.enables_or_reshapes_market_1_to_10 ?? 0) +
+      1/6 * (d.global_market_size_USD_log ?? 0) +
+      1/6 * (d.annual_revenue_USD_log ?? 0) +
+    - 1/6 * (d.rnd_investment_required_log ?? 0)
+  );
+}
+
 export default function Home() {
-  // ==========================
+  // --------------------------
   // Persistent state
-  // ==========================
+  // --------------------------
   const [scoreThreshold, setScoreThreshold] = useState(0.7);
   const [pinned, setPinned] = useState<string[]>([]);
   const [excludedCategories, setExcludedCategories] = useState<string[]>([]);
@@ -132,7 +184,7 @@ export default function Home() {
     }
   }, []);
 
-  //  If user has an investorProfile, generate classification message
+  // If user has an investorProfile, generate classification
   useEffect(() => {
     if (!investorProfile) return;
     const msg = classifyProfile(
@@ -199,7 +251,7 @@ export default function Home() {
   }, []);
 
   // ==========================
-  // Compute composite scores each time rawData or weights changes
+  // Composite Score calculation
   // ==========================
   const computeComposite = useCallback(
     (d: ArticleData) => {
@@ -231,20 +283,33 @@ export default function Home() {
     [weights]
   );
 
+  // ==========================
+  // Rebuild processedData after rawData or weights or PCA data
+  // ==========================
   useEffect(() => {
     if (!rawData.length || !pcaData.length) return;
-    // 1) compute raw composite
+
     const updated = rawData.map((d, i) => {
+      // 1) Recompute composite with user weighting
       const cScore = computeComposite(d);
+
+      // 2) Also compute fixed "Rate", "Longevity", "Market" for each article
+      const rateBase = computeFixedRate(d);
+      const longevityBase = computeFixedLongevity(d);
+      const marketBase = computeFixedMarket(d);
+
       return {
         ...d,
         pcaX: pcaData[i].x,
         pcaY: pcaData[i].y,
         compositeScore: cScore,
+        rateBase,
+        longevityBase,
+        marketBase,
       };
     });
 
-    // 2) normalize
+    // Normalize the composite
     const minC = Math.min(...updated.map((u) => u.compositeScore ?? 0));
     const maxC = Math.max(...updated.map((u) => u.compositeScore ?? 1));
     const finalData = updated.map((u) => {
@@ -257,7 +322,7 @@ export default function Home() {
   }, [rawData, pcaData, computeComposite]);
 
   // ==========================
-  // Derived data
+  // Filtering logic
   // ==========================
   const filteredData = useMemo(() => {
     if (!processedData.length) return [];
@@ -269,6 +334,7 @@ export default function Home() {
     });
   }, [processedData, scoreThreshold, excludedCategories]);
 
+  // Show top 10 categories among the above-threshold set
   const topCategories = useMemo(() => {
     const subsetBeforeExclude = processedData.filter((d) => (d.compositeScore ?? 0) >= scoreThreshold);
     const freqMap: Record<string, number> = {};
@@ -308,7 +374,7 @@ export default function Home() {
     setSelectedArticle(null);
   }
 
-  // Save user choices to localStorage
+  // Save to localStorage whenever pinned/excludes/threshold/weights change
   useEffect(() => {
     localStorage.setItem(
       "myAppState",
@@ -344,10 +410,11 @@ export default function Home() {
   function handleProfileSave(p: { rate: number; longevity: number; market: number }) {
     setInvestorProfile(p);
     localStorage.setItem("investorProfile", JSON.stringify(p));
+
+    // Immediately apply these new weights so we recalc
     updateAllWeights(p.rate, p.longevity, p.market);
   }
 
-  // Helper to update all weights from a single distribution
   function updateAllWeights(r: number, l: number, m: number) {
     setWeights((old) => ({
       ...old,
@@ -383,10 +450,7 @@ export default function Home() {
   // ==========================
   return (
     <div className="w-full min-h-screen flex flex-col md:flex-row">
-      {/* 
-        If there's no investor profile stored, show the InvestorProfileModal.
-        On submit, handleProfileSave is called => sets weights => triggers data re-calc.
-      */}
+      {/* If there's no investor profile stored, show the InvestorProfileModal. */}
       {investorProfile === null && (
         <InvestorProfileModal onClose={() => {}} onSave={handleProfileSave} />
       )}
@@ -404,7 +468,6 @@ export default function Home() {
 
         <h1 className="text-2xl font-bold mt-4">Commercial Potential Explorer</h1>
 
-        {/* TernaryPlot only shows if investorProfile is defined */}
         {investorProfile && (
           <div className="mb-4">
             <h2 className="text-lg font-bold">Your Investor Profile</h2>
@@ -413,15 +476,14 @@ export default function Home() {
               initialLongevity={investorProfile.longevity}
               initialMarket={investorProfile.market}
               onFinish={(r, l, m) => {
-                // If user moves the TernaryPlot, re-apply updated distribution
                 setInvestorProfile({ rate: r, longevity: l, market: m });
                 updateAllWeights(r, l, m);
               }}
             />
             <p className="text-sm">
-              Rate: {(investorProfile.rate * 100).toFixed(1)}% | Longevity:{" "}
-              {(investorProfile.longevity * 100).toFixed(1)}% | Market:{" "}
-              {(investorProfile.market * 100).toFixed(1)}%
+              Rate: {(investorProfile.rate * 100).toFixed(1)}% |
+              Longevity: {(investorProfile.longevity * 100).toFixed(1)}% |
+              Market: {(investorProfile.market * 100).toFixed(1)}%
             </p>
           </div>
         )}
@@ -444,7 +506,6 @@ export default function Home() {
           )}
         </div>
 
-        {/* Score threshold slider */}
         <div className="mt-4">
           <label className="block text-sm mb-1">
             Score Threshold: {scoreThreshold.toFixed(2)}
@@ -502,6 +563,15 @@ export default function Home() {
           </div>
         )}
 
+        {/* 
+          Article Table now shows only:
+          - Title
+          - ChatGPT link
+          - Composite Score
+          - Rate
+          - Longevity
+          - Market
+        */}
         <ArticleTable articles={filteredData} onRowClick={handleRowOrPointClick} />
 
         <div className="mt-4 bg-white p-4 shadow">
@@ -517,7 +587,6 @@ export default function Home() {
           )}
         </div>
 
-        {/* Detail modal */}
         <DetailModal
           article={selectedArticle}
           onClose={closeModal}
@@ -525,7 +594,6 @@ export default function Home() {
           onPin={togglePin}
         />
 
-        {/* Advanced settings drawer */}
         <AdvancedSettingsDrawer
           isOpen={drawerOpen}
           onClose={() => setDrawerOpen(false)}
@@ -534,7 +602,6 @@ export default function Home() {
         />
       </div>
 
-      {/* Overlay modals for email gating */}
       {showModal && (
         <EmailPromptModal
           onClose={handleModalClose}

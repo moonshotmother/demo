@@ -2,6 +2,11 @@ export interface ArticleData {
     title: string;
     abstract: string;
 
+    rateBase: number;
+    longevityBase: number;
+    marketBase: number;
+
+
     CAGR: number;
     years_to_50pct_penetration: number;
     TRL: number;

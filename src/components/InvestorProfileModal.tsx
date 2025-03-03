@@ -111,6 +111,15 @@ export default function InvestorProfileModal({
       wMarket /= sum;
     }
 
+    // if all are 0, default to 1/3 each
+    if (sum === 0) {
+      wRate = 1 / 3;
+      wLong = 1 / 3;
+      wMarket = 1 / 3;
+    }
+
+    console.log("Weights:", wRate, wLong, wMarket);
+
     onSave({ rate: wRate, longevity: wLong, market: wMarket });
     onClose();
   }

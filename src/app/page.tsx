@@ -27,7 +27,9 @@ function loadFromLocalStorage<T>(key: string, defaultVal: T): T {
 }
 
 export default function Home() {
+  // ==========================
   // Persistent state
+  // ==========================
   const [scoreThreshold, setScoreThreshold] = useState(0.7);
   const [pinned, setPinned] = useState<string[]>([]);
   const [excludedCategories, setExcludedCategories] = useState<string[]>([]);
@@ -68,6 +70,7 @@ export default function Home() {
     market: number;
   } | null>(null);
 
+  // Classification message from the user’s ternary distribution
   const [userMessage, setUserMessage] = useState<ProfileMessage | null>(null);
 
   const [showModal, setShowModal] = useState(false);
@@ -75,14 +78,21 @@ export default function Home() {
 
   const [drawerOpen, setDrawerOpen] = useState(false);
 
+  // The data from /data.json
   const [rawData, setRawData] = useState<ArticleData[]>([]);
+  // PCA results
   const [pcaData, setPcaData] = useState<{ x: number; y: number }[]>([]);
+  // Final computed data (after weighting -> composite score)
   const [processedData, setProcessedData] = useState<ArticleData[]>([]);
 
+  // For the detail modal
   const [selectedArticle, setSelectedArticle] = useState<ArticleData | null>(null);
 
-  // Load from localStorage on mount
+  // ==========================
+  // On mount: localStorage + investorProfile + overlay
+  // ==========================
   useEffect(() => {
+    // Load pinned/excluded categories/threshold from localStorage
     const saved = loadFromLocalStorage("myAppState", {
       scoreThreshold: 0.7,
       pinned: [] as string[],
@@ -92,14 +102,16 @@ export default function Home() {
     setPinned(saved.pinned);
     setExcludedCategories(saved.excludedCategories);
 
+    // Investor profile
     const storedProfile = localStorage.getItem("investorProfile");
     if (storedProfile) {
       setInvestorProfile(JSON.parse(storedProfile));
     }
 
-    // Email submission checks
+    // Check localStorage on mount for email gating
     const hasSubmitted = localStorage.getItem("hasSubmittedEmail") === "true";
     if (hasSubmitted) {
+      // user already submitted => do nothing
       return;
     }
     const overlayTriggered = localStorage.getItem("overlayTriggeredOnce") === "true";
@@ -109,7 +121,7 @@ export default function Home() {
       const timer = setTimeout(() => {
         localStorage.setItem("overlayTriggeredOnce", "true");
         setShowModal(true);
-      }, 80000);
+      }, 60000);
       return () => clearTimeout(timer);
     } else {
       if (!hasDismissed) {
@@ -120,7 +132,7 @@ export default function Home() {
     }
   }, []);
 
-  // If user has an investorProfile, show the classification message
+  //  If user has an investorProfile, generate classification message
   useEffect(() => {
     if (!investorProfile) return;
     const msg = classifyProfile(
@@ -131,13 +143,16 @@ export default function Home() {
     setUserMessage(msg);
   }, [investorProfile]);
 
-  // Fetch data + PCA
+  // ==========================
+  // Load data + run PCA once
+  // ==========================
   useEffect(() => {
     fetch("/data.json")
       .then((res) => res.json())
       .then((data: ArticleData[]) => {
         setRawData(data);
 
+        // 1) Build matrix for PCA
         const numericCols = [
           "CAGR",
           "years_to_50pct_penetration",
@@ -169,9 +184,11 @@ export default function Home() {
           })
         );
 
+        // 2) Run PCA
         const pcaModel = new PCA(matrix, { method: "SVD", center: true, scale: false });
         const coords = pcaModel.predict(matrix, { nComponents: 2 });
 
+        // 3) Store PCA coords
         const nextPcaData = data.map((_, i) => ({
           x: coords.get(i, 0),
           y: coords.get(i, 1),
@@ -181,7 +198,9 @@ export default function Home() {
       .catch((err) => console.error(err));
   }, []);
 
-  // Compute composite scores
+  // ==========================
+  // Compute composite scores each time rawData or weights changes
+  // ==========================
   const computeComposite = useCallback(
     (d: ArticleData) => {
       const w = weights;
@@ -214,6 +233,7 @@ export default function Home() {
 
   useEffect(() => {
     if (!rawData.length || !pcaData.length) return;
+    // 1) compute raw composite
     const updated = rawData.map((d, i) => {
       const cScore = computeComposite(d);
       return {
@@ -224,6 +244,7 @@ export default function Home() {
       };
     });
 
+    // 2) normalize
     const minC = Math.min(...updated.map((u) => u.compositeScore ?? 0));
     const maxC = Math.max(...updated.map((u) => u.compositeScore ?? 1));
     const finalData = updated.map((u) => {
@@ -235,6 +256,9 @@ export default function Home() {
     setProcessedData(finalData);
   }, [rawData, pcaData, computeComposite]);
 
+  // ==========================
+  // Derived data
+  // ==========================
   const filteredData = useMemo(() => {
     if (!processedData.length) return [];
     const afterThreshold = processedData.filter((d) => (d.compositeScore ?? 0) >= scoreThreshold);
@@ -258,6 +282,9 @@ export default function Home() {
     return sorted.slice(0, 10);
   }, [processedData, scoreThreshold]);
 
+  // ==========================
+  // Handlers
+  // ==========================
   function handleRowOrPointClick(a: ArticleData) {
     setSelectedArticle(a);
   }
@@ -281,6 +308,7 @@ export default function Home() {
     setSelectedArticle(null);
   }
 
+  // Save user choices to localStorage
   useEffect(() => {
     localStorage.setItem(
       "myAppState",
@@ -296,26 +324,30 @@ export default function Home() {
     localStorage.setItem("weights", JSON.stringify(weights));
   }, [weights]);
 
+  // Email gating
   function handleModalClose() {
     setShowModal(false);
     setShowBar(false);
   }
-
   function handleModalDismiss() {
     localStorage.setItem("hasDismissedEmailModal", "true");
     setShowModal(false);
     setShowBar(true);
   }
-
   function handleBarSubmitted() {
     setShowBar(false);
   }
 
+  // ==========================
+  // Investor Profile
+  // ==========================
   function handleProfileSave(p: { rate: number; longevity: number; market: number }) {
     setInvestorProfile(p);
     localStorage.setItem("investorProfile", JSON.stringify(p));
+    updateAllWeights(p.rate, p.longevity, p.market);
   }
 
+  // Helper to update all weights from a single distribution
   function updateAllWeights(r: number, l: number, m: number) {
     setWeights((old) => ({
       ...old,
@@ -346,8 +378,15 @@ export default function Home() {
     }));
   }
 
+  // ==========================
+  // Return JSX
+  // ==========================
   return (
     <div className="w-full min-h-screen flex flex-col md:flex-row">
+      {/* 
+        If there's no investor profile stored, show the InvestorProfileModal.
+        On submit, handleProfileSave is called => sets weights => triggers data re-calc.
+      */}
       {investorProfile === null && (
         <InvestorProfileModal onClose={() => {}} onSave={handleProfileSave} />
       )}
@@ -365,6 +404,7 @@ export default function Home() {
 
         <h1 className="text-2xl font-bold mt-4">Commercial Potential Explorer</h1>
 
+        {/* TernaryPlot only shows if investorProfile is defined */}
         {investorProfile && (
           <div className="mb-4">
             <h2 className="text-lg font-bold">Your Investor Profile</h2>
@@ -373,6 +413,7 @@ export default function Home() {
               initialLongevity={investorProfile.longevity}
               initialMarket={investorProfile.market}
               onFinish={(r, l, m) => {
+                // If user moves the TernaryPlot, re-apply updated distribution
                 setInvestorProfile({ rate: r, longevity: l, market: m });
                 updateAllWeights(r, l, m);
               }}
@@ -403,6 +444,7 @@ export default function Home() {
           )}
         </div>
 
+        {/* Score threshold slider */}
         <div className="mt-4">
           <label className="block text-sm mb-1">
             Score Threshold: {scoreThreshold.toFixed(2)}
@@ -428,7 +470,7 @@ export default function Home() {
             <ul className="list-disc list-inside">
               {topCategories.map(([cat, count]) => (
                 <li key={cat}>
-                  {cat} ({count}){" "}
+                  {cat} ({count})
                   <button
                     onClick={() => excludeCategory(cat)}
                     className="text-blue-600 hover:underline ml-2"
@@ -475,6 +517,7 @@ export default function Home() {
           )}
         </div>
 
+        {/* Detail modal */}
         <DetailModal
           article={selectedArticle}
           onClose={closeModal}
@@ -482,6 +525,7 @@ export default function Home() {
           onPin={togglePin}
         />
 
+        {/* Advanced settings drawer */}
         <AdvancedSettingsDrawer
           isOpen={drawerOpen}
           onClose={() => setDrawerOpen(false)}
@@ -490,13 +534,13 @@ export default function Home() {
         />
       </div>
 
+      {/* Overlay modals for email gating */}
       {showModal && (
         <EmailPromptModal
           onClose={handleModalClose}
           onDismiss={handleModalDismiss}
         />
       )}
-
       {showBar && <EmailPromptBar onSubmitted={handleBarSubmitted} />}
     </div>
   );

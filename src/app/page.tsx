@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import dynamic from "next/dynamic";
 import { PCA } from "ml-pca";
 
-// Lazy-load large/rarely used components
+// Lazy-load large/rarely used component
 
 
 const ScatterPlot = dynamic(() => import("../components/ScatterPlot"), { ssr: false });
